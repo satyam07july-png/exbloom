@@ -12,6 +12,7 @@ import {
   HelpCircle, 
   Sparkles 
 } from 'lucide-react';
+import BASE_URL from '../utils/api';
 
 export const ContactUs = ({ onExploreClick }) => {
   const [formData, setFormData] = useState({
@@ -33,7 +34,7 @@ export const ContactUs = ({ onExploreClick }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await fetch('/api/admin/public/queries', {
+      await fetch(`${BASE_URL}/api/admin/public/queries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

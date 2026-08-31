@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node server/server.js",
     "server": "node server/server.js",
     "seed": "node server/seed.js",
     "client": "npm run dev --prefix client",

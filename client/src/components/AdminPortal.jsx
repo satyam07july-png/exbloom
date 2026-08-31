@@ -31,6 +31,7 @@ import {
   Key,
   AlertCircle
 } from 'lucide-react';
+import BASE_URL from '../utils/api';
 
 export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
   const [token, setToken] = useState(() => localStorage.getItem('nexbloom_admin_token') || '');
@@ -76,7 +77,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const res = await fetch('/api/upload/image', {
+      const res = await fetch(`${BASE_URL}/api/upload/image`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -117,7 +118,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     setLoginError(null);
 
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch(`${BASE_URL}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
@@ -159,7 +160,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
 
     try {
       // 1. Dashboard stats
-      const dashRes = await fetch('/api/admin/dashboard', { headers: authHeaders });
+      const dashRes = await fetch(`${BASE_URL}/api/admin/dashboard`, { headers: authHeaders });
       if (dashRes.status === 401) {
         handleLogout();
         return;
@@ -170,14 +171,14 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       }
 
       // 2. Orders
-      const orderRes = await fetch('/api/admin/orders', { headers: authHeaders });
+      const orderRes = await fetch(`${BASE_URL}/api/admin/orders`, { headers: authHeaders });
       if (orderRes.ok) {
         const orderData = await orderRes.json();
         if (Array.isArray(orderData)) setOrders(orderData);
       }
 
       // 3. Customer Queries
-      const queryRes = await fetch('/api/admin/queries', { headers: authHeaders });
+      const queryRes = await fetch(`${BASE_URL}/api/admin/queries`, { headers: authHeaders });
       if (queryRes.ok) {
         const queryData = await queryRes.json();
         if (Array.isArray(queryData)) setQueries(queryData);
@@ -203,7 +204,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
 
     if (token) {
       try {
-        await fetch(`/api/admin/products/${productId}/stock`, {
+        await fetch(`${BASE_URL}/api/admin/products/${productId}/stock`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -223,7 +224,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
 
     if (token) {
       try {
-        await fetch(`/api/admin/orders/${orderId}/status`, {
+        await fetch(`${BASE_URL}/api/admin/orders/${orderId}/status`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -243,7 +244,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
 
     if (token) {
       try {
-        await fetch(`/api/admin/queries/${queryId}/status`, {
+        await fetch(`${BASE_URL}/api/admin/queries/${queryId}/status`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -270,7 +271,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       setProducts(updatedList);
       if (token) {
         try {
-          await fetch(`/api/admin/products/${editingProduct._id}`, {
+          await fetch(`${BASE_URL}/api/admin/products/${editingProduct._id}`, {
             method: 'PUT',
             headers: authHeaders,
             body: JSON.stringify(productForm),
@@ -285,7 +286,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       setProducts([newProd, ...products]);
       if (token) {
         try {
-          await fetch('/api/admin/products', {
+          await fetch(`${BASE_URL}/api/admin/products`, {
             method: 'POST',
             headers: authHeaders,
             body: JSON.stringify(productForm),
@@ -304,7 +305,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       setProducts((prev) => prev.filter((p) => p._id !== productId));
       if (token) {
         try {
-          await fetch(`/api/admin/products/${productId}`, {
+          await fetch(`${BASE_URL}/api/admin/products/${productId}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` },
           });

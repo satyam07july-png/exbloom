@@ -14,6 +14,7 @@ import {
   Key 
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import BASE_URL from '../utils/api';
 
 export const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [isRegister, setIsRegister] = useState(false);
@@ -40,7 +41,9 @@ export const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
     setLoading(true);
     setError(null);
 
-    const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
+    const endpoint = isRegister
+      ? `${BASE_URL}/api/auth/register`
+      : `${BASE_URL}/api/auth/login`;
 
     try {
       const res = await fetch(endpoint, {

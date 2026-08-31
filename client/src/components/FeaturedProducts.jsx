@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Heart, Search, Shuffle, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import BASE_URL from '../utils/api';
 
 export const FeaturedProducts = ({ onExploreAll }) => {
   const { addToCart, setSelectedProduct, showToast } = useCart();
@@ -15,7 +16,7 @@ export const FeaturedProducts = ({ onExploreAll }) => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/products');
+        const res = await fetch(`${BASE_URL}/api/products`);
         if (!res.ok) throw new Error('Failed to fetch products');
         const data = await res.json();
         setProducts(data);

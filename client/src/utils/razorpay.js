@@ -1,4 +1,6 @@
 // Dynamic loader for Razorpay checkout script
+import BASE_URL from './api';
+
 export const loadRazorpayScript = () => {
   return new Promise((resolve) => {
     if (window.Razorpay) {
@@ -30,7 +32,7 @@ export const handleRazorpayPayment = async ({
 
   try {
     // 1. Create order on server
-    const orderRes = await fetch('/api/payment/order', {
+    const orderRes = await fetch(`${BASE_URL}/api/payment/order`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -78,7 +80,7 @@ export const handleRazorpayPayment = async ({
       handler: async function (response) {
         try {
           // 3. Verify payment signature on server
-          const verifyRes = await fetch('/api/payment/verify', {
+          const verifyRes = await fetch(`${BASE_URL}/api/payment/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
