@@ -7,19 +7,19 @@ const slides = [
       id: 1,
       title: 'Kitchen Spill Absorption',
       subtitle: '3X Liquid & Grease Wiping',
-      image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80',
+      image: '/bettercare-kitchen.webp',
     },
     {
       id: 2,
       title: 'SilkTouch Skincare Wipes',
       subtitle: 'Dermatologist Safe & Gentle',
-      image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=800&q=80',
+      image: '/bettercare-skincare.webp',
     },
     {
       id: 3,
       title: 'Everyday Family Comfort',
       subtitle: 'Safe for Toddlers & Kids',
-      image: 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=800&q=80',
+      image: '/bettercare-family.webp',
     },
   ],
   [

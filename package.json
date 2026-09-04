@@ -7,6 +7,8 @@
     "start": "node server/server.js",
     "server": "node server/server.js",
     "seed": "node server/seed.js",
+    "create-admin": "node server/create-admin.js",
+    "prisma:generate": "prisma generate",
     "client": "npm run dev --prefix client",
     "build": "npm run build --prefix client",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -16,6 +18,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@prisma/client": "6.19.3",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.6",
@@ -27,6 +30,7 @@
     "mongoose": "^9.9.3",
     "multer": "^2.3.0",
     "multer-storage-cloudinary": "^4.0.0",
+    "prisma": "6.19.3",
     "razorpay": "^2.9.8"
   }
 }
