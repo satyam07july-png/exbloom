@@ -29,7 +29,16 @@ import {
   LogOut,
   ShieldCheck,
   Key,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  Film,
+  Video,
+  Image as ImageIcon,
+  Percent,
+  Check,
+  Sparkles,
+  Tag,
+  Play
 } from 'lucide-react';
 import BASE_URL from '../utils/api';
 
@@ -44,72 +53,176 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     }
   });
 
-  // Login Form State
+  // Login Form States
   const [loginEmail, setLoginEmail] = useState('admin@nexbloom.com');
   const [loginPassword, setLoginPassword] = useState('admin123');
-  const [showPassword, setShowPassword] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState(null);
 
-  // Portal Dashboard States
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'products', 'orders', 'queries'
-  const [orders, setOrders] = useState([]);
-  const [queries, setQueries] = useState([]);
-  const [stats, setStats] = useState({
-    totalRevenue: 48920,
-    totalOrders: 28,
-    totalProducts: products.length,
-    lowStockCount: 2,
-    pendingQueries: 3,
-  });
-
+  // Dashboard Active Tab & Data States
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'products', 'orders', 'queries'
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [imageUploading, setImageUploading] = useState(false);
-  const fileInputRef = useRef(null);
+  
+  // Media Upload States
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState('');
+  const [mediaUrlInput, setMediaUrlInput] = useState('');
+  const [mediaTypeInput, setMediaTypeInput] = useState('image'); // 'image' or 'video'
+  const imageInputRef = useRef(null);
+  const videoInputRef = useRef(null);
 
-  // Handle local image file → upload to Cloudinary → save URL in form
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      const res = await fetch(`${BASE_URL}/api/upload/image`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        setProductForm((prev) => ({ ...prev, image: data.url }));
-      } else {
-        alert('Image upload failed: ' + (data.error || 'Unknown error'));
-      }
-    } catch (err) {
-      alert('Upload error: ' + err.message);
-    } finally {
-      setImageUploading(false);
-    }
-  };
-
-  // Product Form State
-  const [productForm, setProductForm] = useState({
+  // Product Form Initial State
+  const defaultProductForm = {
     name: '',
     category: 'Tissue Paper',
-    price: 149,
-    image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80',
-    tagline: '',
-    description: '',
+    price: 129, // Discount ke baad ka amount (Selling Price)
+    mrp: 199,   // Discount se pehle ka amount (Original MRP)
+    image: '',  // Main / Primary Image URL
+    images: [], // Multiple Images Array
+    videos: [], // Multiple Videos Array
+    pullsCount: '100 Pulls / Box',
+    tagline: '100% Virgin wood pulp, ultra absorbent & soft',
+    description: 'Crafted with premium virgin pulp for maximum softness, strength, and hygiene. Safe for everyday personal care and dining.',
     ply: '2-Ply',
+    material: '100% Virgin Pulp',
     stock: 50,
+    specs: ['100% Virgin Wood Pulp', 'Ultra Soft & Absorbent', 'Food Contact Safe Certified', 'Lint-Free & Hypoallergenic'],
     variants: [
-      { size: 'Pack of 2', price: 149, stock: 30, unitWeight: '100 Sheets / Pack' },
-      { size: 'Pack of 4', price: 279, stock: 20, unitWeight: '100 Sheets / Pack' },
+      { size: 'Pack of 2 (200 Sheets)', mrp: 249, price: 129, pulls: '100 Pulls / Box', stock: 30, unitWeight: '100 Sheets / Pack' },
+      { size: 'Pack of 4 (400 Sheets)', mrp: 499, price: 239, pulls: '100 Pulls / Box', stock: 20, unitWeight: '100 Sheets / Pack' },
     ],
-  });
+  };
+
+  const [productForm, setProductForm] = useState(defaultProductForm);
+  const [specInput, setSpecInput] = useState('');
+
+  // Handle Multi-Image & Video Local File Upload to Cloudinary
+  const handleFileUpload = async (e, type = 'image') => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setUploadingMedia(true);
+    setUploadProgressText(`Uploading ${files.length} ${type}(s) to Cloudinary...`);
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const formData = new FormData();
+      formData.append(type === 'video' ? 'video' : 'image', file);
+
+      try {
+        setUploadProgressText(`Uploading ${i + 1}/${files.length}: ${file.name}...`);
+        const endpoint = type === 'video' ? `${BASE_URL}/api/upload/video` : `${BASE_URL}/api/upload/image`;
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (res.ok && data.url) {
+          if (type === 'video') {
+            setProductForm((prev) => ({
+              ...prev,
+              videos: [...(prev.videos || []), data.url],
+            }));
+          } else {
+            setProductForm((prev) => {
+              const newImages = [...(prev.images || []), data.url];
+              return {
+                ...prev,
+                image: prev.image || data.url, // Set first image as main if empty
+                images: newImages,
+              };
+            });
+          }
+        } else {
+          alert(`Upload error for ${file.name}: ` + (data.error || 'Upload failed'));
+        }
+      } catch (err) {
+        alert(`Error uploading ${file.name}: ` + err.message);
+      }
+    }
+
+    setUploadingMedia(false);
+    setUploadProgressText('');
+    // Reset file input value
+    if (e.target) e.target.value = '';
+  };
+
+  // Add Direct Media URL
+  const handleAddMediaUrl = () => {
+    if (!mediaUrlInput.trim()) return;
+    const url = mediaUrlInput.trim();
+
+    if (mediaTypeInput === 'video') {
+      setProductForm((prev) => ({
+        ...prev,
+        videos: [...(prev.videos || []), url],
+      }));
+    } else {
+      setProductForm((prev) => {
+        const newImages = [...(prev.images || []), url];
+        return {
+          ...prev,
+          image: prev.image || url,
+          images: newImages,
+        };
+      });
+    }
+
+    setMediaUrlInput('');
+  };
+
+  // Remove Image from array
+  const handleRemoveImage = (indexToRemove) => {
+    setProductForm((prev) => {
+      const updated = prev.images.filter((_, idx) => idx !== indexToRemove);
+      return {
+        ...prev,
+        images: updated,
+        image: updated.length > 0 ? (prev.image === prev.images[indexToRemove] ? updated[0] : prev.image) : '',
+      };
+    });
+  };
+
+  // Remove Video from array
+  const handleRemoveVideo = (indexToRemove) => {
+    setProductForm((prev) => ({
+      ...prev,
+      videos: prev.videos.filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
+
+  // Set as Primary Image
+  const handleSetPrimaryImage = (imgUrl) => {
+    setProductForm((prev) => ({
+      ...prev,
+      image: imgUrl,
+    }));
+  };
+
+  // Add Specification / Highlight
+  const handleAddSpec = () => {
+    if (!specInput.trim()) return;
+    setProductForm((prev) => ({
+      ...prev,
+      specs: [...(prev.specs || []), specInput.trim()],
+    }));
+    setSpecInput('');
+  };
+
+  // Remove Specification
+  const handleRemoveSpec = (indexToRemove) => {
+    setProductForm((prev) => ({
+      ...prev,
+      specs: prev.specs.filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
 
   // Handle Admin Login via JWT API
   const handleLogin = async (e) => {
@@ -149,42 +262,49 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     localStorage.removeItem('nexbloom_admin_user');
   };
 
-  // Fetch Dashboard Data with JWT Authorization Header
-  const fetchData = async () => {
+  // Dashboard Stats & Real MongoDB Orders & Queries
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [queries, setQueries] = useState([]);
+
+  // Fetch real data from backend
+  const fetchAdminData = async () => {
     if (!token) return;
     setLoading(true);
-    const authHeaders = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
+    const authHeaders = { Authorization: `Bearer ${token}` };
 
     try {
-      // 1. Dashboard stats
+      // 1. Dashboard metrics
       const dashRes = await fetch(`${BASE_URL}/api/admin/dashboard`, { headers: authHeaders });
-      if (dashRes.status === 401) {
-        handleLogout();
-        return;
-      }
       if (dashRes.ok) {
         const dashData = await dashRes.json();
-        if (dashData.stats) setStats(dashData.stats);
+        setDashboardStats(dashData.stats);
       }
 
-      // 2. Orders
+      // 2. Orders list
       const orderRes = await fetch(`${BASE_URL}/api/admin/orders`, { headers: authHeaders });
       if (orderRes.ok) {
         const orderData = await orderRes.json();
-        if (Array.isArray(orderData)) setOrders(orderData);
+        setOrders(orderData);
       }
 
       // 3. Customer Queries
       const queryRes = await fetch(`${BASE_URL}/api/admin/queries`, { headers: authHeaders });
       if (queryRes.ok) {
         const queryData = await queryRes.json();
-        if (Array.isArray(queryData)) setQueries(queryData);
+        setQueries(queryData);
       }
-    } catch (e) {
-      console.log('Using local fallback state for dashboard');
+
+      // 4. Products List
+      const prodRes = await fetch(`${BASE_URL}/api/products`);
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        if (Array.isArray(prodData)) {
+          setProducts(prodData);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load admin data:', err);
     } finally {
       setLoading(false);
     }
@@ -192,14 +312,16 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
 
   useEffect(() => {
     if (token) {
-      fetchData();
+      fetchAdminData();
     }
   }, [token]);
 
-  // Stock Quick Adjustment
-  const handleStockChange = async (productId, delta) => {
+  // Handle Quick Stock Update (+/-)
+  const handleStockDelta = async (productId, delta) => {
     setProducts((prev) =>
-      prev.map((p) => (p._id === productId ? { ...p, stock: Math.max(0, p.stock + delta) } : p))
+      prev.map((p) =>
+        p._id === productId ? { ...p, stock: Math.max(0, (p.stock || 0) + delta) } : p
+      )
     );
 
     if (token) {
@@ -216,7 +338,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     }
   };
 
-  // Order Status Update
+  // Handle Order Status Change
   const handleOrderStatusChange = async (orderId, newStatus) => {
     setOrders((prev) =>
       prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o))
@@ -236,7 +358,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     }
   };
 
-  // Query Status Update
+  // Handle Query Status Change
   const handleQueryStatusChange = async (queryId, newStatus) => {
     setQueries((prev) =>
       prev.map((q) => (q._id === queryId ? { ...q, status: newStatus } : q))
@@ -264,39 +386,53 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       Authorization: `Bearer ${token}`,
     };
 
+    // Ensure main image is set
+    const finalImage = productForm.image || (productForm.images && productForm.images[0]) || '';
+    const payload = {
+      ...productForm,
+      image: finalImage,
+      price: Number(productForm.price),
+      mrp: Number(productForm.mrp || 0),
+      stock: Number(productForm.stock || 0),
+    };
+
     if (editingProduct) {
       const updatedList = products.map((p) =>
-        p._id === editingProduct._id ? { ...p, ...productForm } : p
+        p._id === editingProduct._id ? { ...p, ...payload } : p
       );
       setProducts(updatedList);
       if (token) {
         try {
-          await fetch(`${BASE_URL}/api/admin/products/${editingProduct._id}`, {
+          const res = await fetch(`${BASE_URL}/api/admin/products/${editingProduct._id}`, {
             method: 'PUT',
             headers: authHeaders,
-            body: JSON.stringify(productForm),
+            body: JSON.stringify(payload),
           });
+          if (res.ok) {
+            fetchAdminData();
+          }
         } catch (e) {}
       }
     } else {
-      const newProd = {
-        ...productForm,
-        _id: `prod_${Date.now()}`,
-      };
-      setProducts([newProd, ...products]);
+      const tempId = `prod_${Date.now()}`;
+      setProducts([{ ...payload, _id: tempId }, ...products]);
       if (token) {
         try {
-          await fetch(`${BASE_URL}/api/admin/products`, {
+          const res = await fetch(`${BASE_URL}/api/admin/products`, {
             method: 'POST',
             headers: authHeaders,
-            body: JSON.stringify(productForm),
+            body: JSON.stringify(payload),
           });
+          if (res.ok) {
+            fetchAdminData();
+          }
         } catch (e) {}
       }
     }
 
     setIsAddModalOpen(false);
     setEditingProduct(null);
+    setProductForm(defaultProductForm);
   };
 
   // Delete Product
@@ -314,6 +450,13 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     }
   };
 
+  // Open Add Modal
+  const openAddModal = () => {
+    setEditingProduct(null);
+    setProductForm(defaultProductForm);
+    setIsAddModalOpen(true);
+  };
+
   // Open Edit Modal
   const openEditModal = (product) => {
     setEditingProduct(product);
@@ -321,14 +464,20 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       name: product.name,
       category: product.category,
       price: product.price,
+      mrp: product.mrp || product.originalPrice || 0,
       image: product.image,
+      images: Array.isArray(product.images) && product.images.length > 0 ? product.images : (product.image ? [product.image] : []),
+      videos: Array.isArray(product.videos) ? product.videos : [],
+      pullsCount: product.pullsCount || '',
       tagline: product.tagline || '',
       description: product.description || '',
       ply: product.ply || '2-Ply',
-      stock: product.stock || 50,
-      variants: product.variants || [
-        { size: 'Pack of 2', price: product.price, stock: 20 },
-        { size: 'Pack of 4', price: Math.round(product.price * 1.9), stock: 20 },
+      material: product.material || '100% Virgin Pulp',
+      stock: product.stock !== undefined ? product.stock : 50,
+      specs: product.specs || ['100% Virgin Pulp', 'Ultra Soft'],
+      variants: product.variants && product.variants.length > 0 ? product.variants : [
+        { size: 'Pack of 2', mrp: product.mrp || 0, price: product.price, stock: 20, pulls: product.pullsCount || '' },
+        { size: 'Pack of 4', mrp: product.mrp ? Math.round(product.mrp * 1.9) : 0, price: Math.round(product.price * 1.9), stock: 20, pulls: product.pullsCount || '' },
       ],
     });
     setIsAddModalOpen(true);
@@ -337,98 +486,136 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
   // Variant change helper
   const updateVariant = (index, field, value) => {
     const updated = [...productForm.variants];
-    updated[index][field] = field === 'price' || field === 'stock' ? Number(value) : value;
+    updated[index][field] = field === 'price' || field === 'mrp' || field === 'stock' ? Number(value) : value;
     setProductForm({ ...productForm, variants: updated });
   };
 
+  // Add Variant Row
   const addVariantRow = () => {
     setProductForm({
       ...productForm,
       variants: [
         ...productForm.variants,
-        { size: 'Pack of 6', price: Math.round(productForm.price * 2.8), stock: 20 },
+        { 
+          size: `Pack of ${(productForm.variants.length + 1) * 2} (${(productForm.variants.length + 1) * 200} Pulls)`, 
+          mrp: Math.round(productForm.mrp * (productForm.variants.length + 1) * 0.9) || 0,
+          price: Math.round(productForm.price * (productForm.variants.length + 1) * 0.9), 
+          pulls: productForm.pullsCount || '',
+          stock: 20, 
+          unitWeight: '100 Pulls / Box' 
+        },
       ],
     });
   };
 
+  // Remove Variant Row
   const removeVariantRow = (index) => {
-    if (productForm.variants.length > 1) {
-      const updated = productForm.variants.filter((_, i) => i !== index);
-      setProductForm({ ...productForm, variants: updated });
-    }
+    setProductForm({
+      ...productForm,
+      variants: productForm.variants.filter((_, i) => i !== index),
+    });
   };
 
+  // Calculate live discount percentage for badge preview
+  const calculateDiscount = (mrp, price) => {
+    if (!mrp || !price || mrp <= price) return null;
+    const saving = mrp - price;
+    const percent = Math.round((saving / mrp) * 100);
+    return { percent, saving };
+  };
 
-  // =========================================================================
-  // VIEW 1: ADMIN LOGIN SCREEN (When not authenticated via JWT)
-  // =========================================================================
+  const currentDiscount = calculateDiscount(productForm.mrp, productForm.price);
+
+  // Filter Products
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          p.category.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCat = categoryFilter === 'All' || p.category === categoryFilter;
+    return matchesSearch && matchesCat;
+  });
+
+  // Calculate Real-Time Dynamic Metrics
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.status === 'paid' ? o.totalAmount : 0), 0);
+  const lowStockCount = products.filter((p) => p.stock <= 20).length;
+  const totalStockUnits = products.reduce((sum, p) => sum + (p.stock || 0), 0);
+
+  // ==========================================
+  // VIEW: 1. ADMIN LOGIN SCREEN (If not authenticated)
+  // ==========================================
   if (!token) {
     return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Decorative background glow */}
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl" />
+
+        <div className="relative w-full max-w-md bg-slate-800/90 border border-slate-700/80 rounded-3xl p-8 shadow-2xl backdrop-blur-xl text-white">
           
-          {/* Brand Logo & Title */}
-          <div className="text-center space-y-2">
-            <div className="inline-block py-1">
-              <img
-                src="/logo.png"
-                alt="NexBloom Logo"
-                className="h-10 w-auto object-contain brightness-0 invert opacity-95"
-              />
+          <button
+            onClick={onBackToStore}
+            className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-emerald-400 mb-6 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Store</span>
+          </button>
+
+          <div className="text-center space-y-2 mb-8">
+            <div className="w-14 h-14 bg-gradient-to-tr from-emerald-600 to-teal-400 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+              <ShieldCheck className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-xl font-black text-white tracking-tight">NexBloom Admin Portal</h1>
+            <h1 className="text-2xl font-black tracking-tight text-white">
+              NexBloom Store Admin
+            </h1>
             <p className="text-xs text-slate-400">
-              Enter your database credentials to access store controls.
+              Secure administrator access for inventory &amp; order management
             </p>
           </div>
 
-          {/* Error Message */}
           {loginError && (
-            <div className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+            <div className="mb-6 p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs flex items-center gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
               <span>{loginError}</span>
             </div>
           )}
 
-          {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-1">
+              <label className="text-xs font-bold text-slate-300 block mb-1.5">
                 Admin Email Address
               </label>
               <div className="relative">
                 <input
                   type="email"
                   required
-                  placeholder="admin@nexbloom.com"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full bg-slate-900 text-xs text-white placeholder-slate-500 pl-9 pr-4 py-3 rounded-xl border border-slate-800 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-900/80 text-xs text-white placeholder-slate-500 pl-10 pr-4 py-3 rounded-xl border border-slate-700 focus:outline-none focus:border-emerald-500 transition-colors"
+                  placeholder="admin@nexbloom.com"
                 />
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-1">
+              <label className="text-xs font-bold text-slate-300 block mb-1.5">
                 Admin Password
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showLoginPassword ? 'text' : 'password'}
                   required
-                  placeholder="••••••••"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full bg-slate-900 text-xs text-white placeholder-slate-500 pl-9 pr-10 py-3 rounded-xl border border-slate-800 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-900/80 text-xs text-white placeholder-slate-500 pl-10 pr-10 py-3 rounded-xl border border-slate-700 focus:outline-none focus:border-emerald-500 transition-colors"
+                  placeholder="••••••••"
                 />
-                <Key className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -436,901 +623,1114 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
             <button
               type="submit"
               disabled={loginLoading}
-              className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer disabled:opacity-50 mt-2"
             >
-              {loginLoading ? (
-                <span>Authenticating with JWT...</span>
-              ) : (
-                <>
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Secure Admin Login</span>
-                </>
-              )}
+              {loginLoading ? 'Authenticating...' : 'Sign In to Dashboard'}
             </button>
           </form>
-
-          {/* Quick Default Credentials Note */}
-          <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
-            <p className="font-bold text-slate-300">🔑 Default Credentials (Auto-Seeded):</p>
-            <p>Email: <strong className="text-emerald-400 font-mono">admin@nexbloom.com</strong></p>
-            <p>Password: <strong className="text-emerald-400 font-mono">admin123</strong></p>
-          </div>
-
-          {/* Back to Store Button */}
-          <button
-            onClick={onBackToStore}
-            className="w-full py-2.5 rounded-xl bg-transparent hover:bg-slate-900 text-slate-400 hover:text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Live Store</span>
-          </button>
 
         </div>
       </div>
     );
   }
 
-
-  // =========================================================================
-  // VIEW 2: AUTHENTICATED ADMIN DASHBOARD
-  // =========================================================================
+  // ==========================================
+  // VIEW: 2. LOGGED-IN ADMIN DASHBOARD
+  // ==========================================
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 pb-20">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       
-      {/* Admin Top Header */}
-      <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            
-            {/* Left: Brand / Admin Label */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center">
-                <img
-                  src="/logo.png"
-                  alt="NexBloom Logo"
-                  className="h-8 w-auto object-contain brightness-0 invert opacity-95"
-                />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                    JWT Secured Admin
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Logged-in Profile, Refresh & Logout */}
-            <div className="flex items-center gap-3">
-              <span className="hidden sm:inline-block text-xs text-slate-400">
-                Logged in as <strong className="text-slate-200">{adminUser?.name || 'Admin'}</strong>
+      {/* Top Navbar */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBackToStore}
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Return to Customer Storefront"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-black text-[#1b4d3e] tracking-tight">NexBloom</span>
+              <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                Admin
               </span>
-
-              <button
-                onClick={fetchData}
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                title="Refresh Live Data"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-
-              <button
-                onClick={onBackToStore}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Live Store</span>
-              </button>
-
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold transition-colors cursor-pointer"
-                title="Logout from Admin"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Logout</span>
-              </button>
             </div>
-
           </div>
-        </div>
 
-        {/* Tab Navigation Strip */}
-        <div className="bg-slate-950 border-t border-slate-800">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-2 overflow-x-auto py-1 scrollbar-none">
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-xs font-bold text-slate-800">{adminUser?.name || 'Store Administrator'}</p>
+              <p className="text-[10px] text-slate-400">{adminUser?.email || 'admin@nexbloom.com'}</p>
+            </div>
             <button
-              onClick={() => setActiveTab('overview')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                activeTab === 'overview'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
+              onClick={handleLogout}
+              className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+              title="Sign Out"
             >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>Dashboard Overview</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('products')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                activeTab === 'products'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <Package className="w-4 h-4" />
-              <span>Products &amp; Inventory ({products.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                activeTab === 'orders'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Customer Orders ({orders.length > 0 ? orders.length : 3})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('queries')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                activeTab === 'queries'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>Customer Queries ({queries.length > 0 ? queries.length : 2})</span>
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Admin Content Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      {/* Main Container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 space-y-8">
         
-        {/* ================= TAB 1: OVERVIEW & ANALYTICS ================= */}
-        {activeTab === 'overview' && (
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-2 bg-slate-200/60 p-1 rounded-2xl">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'dashboard'
+                  ? 'bg-white text-emerald-800 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <LayoutDashboard className="w-4 h-4" />
+                <span>Overview</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'products'
+                  ? 'bg-white text-emerald-800 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                <span>Products &amp; Inventory ({products.length})</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'orders'
+                  ? 'bg-white text-emerald-800 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4" />
+                <span>Live Orders ({orders.length})</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('queries')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'queries'
+                  ? 'bg-white text-emerald-800 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                <span>Inquiries ({queries.length})</span>
+              </div>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchAdminData}
+              disabled={loading}
+              className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
+              title="Refresh Data"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+
+            <button
+              onClick={openAddModal}
+              className="px-4 py-2.5 bg-[#1b4d3e] hover:bg-[#143c30] text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Product</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ================= TAB 1: OVERVIEW METRICS ================= */}
+        {activeTab === 'dashboard' && (
           <div className="space-y-8">
-            
-            {/* Stat Metric Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-2">
-                  <span>Total Sales Revenue</span>
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-6 h-6" />
                 </div>
-                <p className="text-2xl sm:text-3xl font-black text-slate-900">
-                  ₹{stats.totalRevenue.toLocaleString('en-IN')}
-                </p>
-                <span className="text-[11px] text-emerald-700 font-semibold mt-1 block">
-                  ↑ Verified via Razorpay Payments
-                </span>
+                <div>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Sales</p>
+                  <p className="text-2xl font-black text-slate-900">₹{totalRevenue.toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Real-time Razorpay orders</p>
+                </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-2">
-                  <span>Total Customer Orders</span>
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                    <ShoppingCart className="w-4 h-4" />
-                  </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+                  <ShoppingCart className="w-6 h-6" />
                 </div>
-                <p className="text-2xl sm:text-3xl font-black text-slate-900">
-                  {orders.length > 0 ? orders.length : stats.totalOrders}
-                </p>
-                <span className="text-[11px] text-slate-500 font-medium mt-1 block">
-                  Pan-India deliveries
-                </span>
+                <div>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Orders</p>
+                  <p className="text-2xl font-black text-slate-900">{orders.length}</p>
+                  <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Processed orders</p>
+                </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-2">
-                  <span>Active Products in Catalog</span>
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                    <Package className="w-4 h-4" />
-                  </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                  <Package className="w-6 h-6" />
                 </div>
-                <p className="text-2xl sm:text-3xl font-black text-slate-900">
-                  {products.length}
-                </p>
-                <span className="text-[11px] text-slate-500 font-medium mt-1 block">
-                  Tissue, Kitchen, Toilet &amp; Face
-                </span>
+                <div>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Stock</p>
+                  <p className="text-2xl font-black text-slate-900">{totalStockUnits} <span className="text-xs font-normal text-slate-400">units</span></p>
+                  <p className="text-[10px] text-amber-700 font-semibold mt-0.5">{lowStockCount} items in low stock</p>
+                </div>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-2">
-                  <span>Pending Customer Inquiries</span>
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
-                    <MessageSquare className="w-4 h-4" />
-                  </div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
+                  <MessageSquare className="w-6 h-6" />
                 </div>
-                <p className="text-2xl sm:text-3xl font-black text-slate-900">
-                  {queries.filter(q => q.status === 'new').length || stats.pendingQueries}
-                </p>
-                <span className="text-[11px] text-amber-700 font-semibold mt-1 block">
-                  Requires support reply
-                </span>
+                <div>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Inquiries</p>
+                  <p className="text-2xl font-black text-slate-900">{queries.length}</p>
+                  <p className="text-[10px] text-purple-700 font-semibold mt-0.5">B2B &amp; Support queries</p>
+                </div>
               </div>
             </div>
 
-            {/* Quick Actions & Add Product Banner */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-slate-900">Store Management &amp; Inventory Hub</h3>
-                <p className="text-xs text-slate-500">
-                  Add new tissue packs, adjust warehouse stock units, or update order statuses.
-                </p>
-              </div>
-              <div className="flex gap-2.5">
+            {/* Quick Low Stock Alert Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Inventory Status &amp; Quick Adjustments</h3>
+                  <p className="text-xs text-slate-500">Monitor stock levels and restock items with one click</p>
+                </div>
                 <button
-                  onClick={() => {
-                    setEditingProduct(null);
-                    setIsAddModalOpen(true);
-                  }}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => setActiveTab('products')}
+                  className="text-xs font-bold text-[#1b4d3e] hover:underline cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Add New Product</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('orders')}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
-                >
-                  Manage Orders
-                </button>
-              </div>
-            </div>
-
-            {/* Recent Orders Preview */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-slate-900">Recent Customer Orders</h3>
-                <button
-                  onClick={() => setActiveTab('orders')}
-                  className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer"
-                >
-                  View All Orders &rarr;
+                  Manage All Products →
                 </button>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold tracking-wider">
+                  <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-100">
                     <tr>
-                      <th className="p-3">Customer</th>
-                      <th className="p-3">Items / Packs</th>
-                      <th className="p-3">Total Amount</th>
-                      <th className="p-3">Payment Status</th>
-                      <th className="p-3">Delivery Status</th>
+                      <th className="py-3 px-4">Product</th>
+                      <th className="py-3 px-4">Category</th>
+                      <th className="py-3 px-4">MRP / Price</th>
+                      <th className="py-3 px-4">Pulls / Sheets</th>
+                      <th className="py-3 px-4">Current Stock</th>
+                      <th className="py-3 px-4 text-right">Quick Restock</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    <tr>
-                      <td className="p-3 font-semibold text-slate-900">
-                        Rajesh Khanna
-                        <span className="block text-[10px] text-slate-400">rajesh@gmail.com</span>
-                      </td>
-                      <td className="p-3">CloudSoft Toilet Rolls (Pack of 12)</td>
-                      <td className="p-3 font-bold text-slate-900">₹549</td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
-                          PAID (Razorpay)
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold text-[10px]">
-                          Shipped
-                        </span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-semibold text-slate-900">
-                        Cafe Mocha (B2B Bulk)
-                        <span className="block text-[10px] text-slate-400">manager@cafemocha.in</span>
-                      </td>
-                      <td className="p-3">Kitchen Rolls (Pack of 12) x 4</td>
-                      <td className="p-3 font-bold text-slate-900">₹3,516</td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
-                          PAID (UPI)
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                          Delivered
-                        </span>
-                      </td>
-                    </tr>
+                  <tbody className="divide-y divide-slate-100">
+                    {products.map((p) => {
+                      const discount = calculateDiscount(p.mrp, p.price);
+                      return (
+                        <tr key={p._id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-3 px-4 flex items-center gap-3">
+                            <img
+                              src={p.image || (p.images && p.images[0]) || '/redefine-tissue-box.webp'}
+                              alt={p.name}
+                              className="w-10 h-10 rounded-lg object-cover border border-slate-200 bg-slate-100 shrink-0"
+                            />
+                            <div>
+                              <p className="font-bold text-slate-900">{p.name}</p>
+                              <p className="text-[10px] text-slate-400">{p.ply || '2-Ply'} • {p.material}</p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-600 font-medium">{p.category}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5">
+                              {p.mrp > p.price && (
+                                <span className="text-[10px] text-slate-400 line-through">₹{p.mrp}</span>
+                              )}
+                              <span className="font-bold text-emerald-800">₹{p.price}</span>
+                              {discount && (
+                                <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
+                                  {discount.percent}% OFF
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-600 font-medium">
+                            {p.pullsCount || 'Standard'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`px-2.5 py-1 rounded-full font-bold text-[10px] ${
+                                p.stock <= 10
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : p.stock <= 25
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {p.stock} units
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                              <button
+                                onClick={() => handleStockDelta(p._id, -5)}
+                                className="p-1 hover:bg-white rounded text-slate-600 hover:text-rose-600 cursor-pointer"
+                                title="Reduce 5 units"
+                              >
+                                <MinusCircle className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="text-[11px] font-bold px-1.5 text-slate-700">{p.stock}</span>
+                              <button
+                                onClick={() => handleStockDelta(p._id, 10)}
+                                className="p-1 hover:bg-white rounded text-slate-600 hover:text-emerald-700 cursor-pointer"
+                                title="Add 10 units"
+                              >
+                                <PlusCircle className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </div>
-
           </div>
         )}
-
 
         {/* ================= TAB 2: PRODUCTS & INVENTORY MANAGER ================= */}
         {activeTab === 'products' && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Product Catalog &amp; Inventory</h2>
-                <p className="text-xs text-slate-500">
-                  Manage product details, pricing, pack variants, and live warehouse inventory counts.
-                </p>
+            
+            {/* Search & Filter Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="relative w-full sm:w-72">
+                <input
+                  type="text"
+                  placeholder="Search products by name or category..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-slate-50 text-xs text-slate-800 placeholder-slate-400 pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500"
+                />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
 
-              <button
-                onClick={() => {
-                  setEditingProduct(null);
-                  setIsAddModalOpen(true);
-                }}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Product</span>
-              </button>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <span className="text-xs font-bold text-slate-500">Filter:</span>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="bg-slate-50 text-xs font-bold text-slate-700 px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                >
+                  <option value="All">All Categories</option>
+                  <option value="Tissue Paper">Tissue Paper</option>
+                  <option value="Kitchen Roll">Kitchen Roll</option>
+                  <option value="Toilet Roll">Toilet Roll</option>
+                  <option value="Face Tissue">Face Tissue</option>
+                </select>
+              </div>
             </div>
 
-            {/* Products Table */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold tracking-wider">
-                    <tr>
-                      <th className="p-3.5">Product</th>
-                      <th className="p-3.5">Category</th>
-                      <th className="p-3.5">Starting Price</th>
-                      <th className="p-3.5">Pack Sizes</th>
-                      <th className="p-3.5">Stock Level</th>
-                      <th className="p-3.5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {products.map((p) => (
-                      <tr key={p._id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={p.image}
-                              alt={p.name}
-                              className="w-10 h-10 rounded-lg object-cover bg-slate-100 border border-slate-200 shrink-0"
-                            />
-                            <div>
-                              <p className="font-bold text-slate-900 line-clamp-1">{p.name}</p>
-                              <p className="text-[10px] text-slate-400">{p.ply || '2-Ply'}</p>
-                            </div>
-                          </div>
-                        </td>
+            {/* Products Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProducts.map((product) => {
+                const discount = calculateDiscount(product.mrp, product.price);
+                const mediaCount = (product.images?.length || (product.image ? 1 : 0)) + (product.videos?.length || 0);
 
-                        <td className="p-3.5">
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px]">
-                            {p.category}
+                return (
+                  <div
+                    key={product._id}
+                    className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow"
+                  >
+                    <div>
+                      {/* Product Image & Badges */}
+                      <div className="relative aspect-4/3 bg-slate-100 overflow-hidden border-b border-slate-100 group">
+                        <img
+                          src={product.image || (product.images && product.images[0]) || '/redefine-tissue-box.webp'}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        
+                        {/* Category badge */}
+                        <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-xs text-[10px] font-bold text-slate-800 px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                          {product.category}
+                        </span>
+
+                        {/* Discount Badge */}
+                        {discount && (
+                          <span className="absolute top-3 right-3 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm">
+                            {discount.percent}% OFF
                           </span>
-                        </td>
+                        )}
 
-                        <td className="p-3.5 font-bold text-slate-900">
-                          ₹{p.price}
-                        </td>
+                        {/* Media count indicator */}
+                        {mediaCount > 1 && (
+                          <span className="absolute bottom-2 left-2 bg-slate-900/70 backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <ImageIcon className="w-3 h-3" />
+                            <span>{product.images?.length || 1} img</span>
+                            {product.videos?.length > 0 && <span>• {product.videos.length} vid</span>}
+                          </span>
+                        )}
+                      </div>
 
-                        <td className="p-3.5">
-                          <div className="flex flex-wrap gap-1 max-w-[200px]">
-                            {p.variants && p.variants.map((v, i) => (
-                              <span
-                                key={i}
-                                className="text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-semibold"
-                              >
-                                {v.size.split('(')[0].trim()} (₹{v.price})
-                              </span>
-                            ))}
-                          </div>
-                        </td>
+                      {/* Product Info */}
+                      <div className="p-5 space-y-2">
+                        <h4 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">
+                          {product.name}
+                        </h4>
 
-                        {/* Stock Adjustment Stepper */}
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleStockChange(p._id, -5)}
-                              className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-slate-100 cursor-pointer"
-                              title="Decrease Stock (-5)"
-                            >
-                              <MinusCircle className="w-4 h-4" />
-                            </button>
-                            <span
-                              className={`px-2 py-0.5 rounded font-bold text-xs ${
-                                (p.stock || 0) <= 20
-                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                  : 'bg-slate-100 text-slate-900'
-                              }`}
-                            >
-                              {p.stock || 50} units
+                        {/* Pulls / Sheets & Ply */}
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                          {product.pullsCount && (
+                            <span className="bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded-md border border-emerald-200/60">
+                              {product.pullsCount}
                             </span>
-                            <button
-                              onClick={() => handleStockChange(p._id, 10)}
-                              className="p-1 text-slate-400 hover:text-emerald-700 rounded hover:bg-slate-100 cursor-pointer"
-                              title="Add Stock (+10)"
-                            >
-                              <PlusCircle className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
+                          )}
+                          <span className="bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-md">
+                            {product.ply || '2-Ply'}
+                          </span>
+                          <span className="bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-md">
+                            {product.material || 'Virgin Pulp'}
+                          </span>
+                        </div>
 
-                        {/* Edit & Delete Actions */}
-                        <td className="p-3.5 text-right space-x-2">
-                          <button
-                            onClick={() => openEditModal(p)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 transition-colors cursor-pointer"
-                            title="Edit Product"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(p._id)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors cursor-pointer"
-                            title="Delete Product"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-
-        {/* ================= TAB 3: ORDERS MANAGEMENT ================= */}
-        {activeTab === 'orders' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Customer Orders</h2>
-              <p className="text-xs text-slate-500">
-                Track payments, delivery addresses, items, and update order statuses.
-              </p>
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold tracking-wider">
-                    <tr>
-                      <th className="p-3.5">Order ID</th>
-                      <th className="p-3.5">Customer &amp; Phone</th>
-                      <th className="p-3.5">Delivery Address</th>
-                      <th className="p-3.5">Ordered Items</th>
-                      <th className="p-3.5">Total Amount</th>
-                      <th className="p-3.5">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {orders.length > 0 ? (
-                      orders.map((o) => (
-                        <tr key={o._id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="p-3.5 font-mono text-[11px] font-bold text-slate-900">
-                            {o.razorpayOrderId || o._id.slice(-6)}
-                          </td>
-
-                          <td className="p-3.5">
-                            <p className="font-bold text-slate-900">{o.customer?.name}</p>
-                            <p className="text-[10px] text-slate-400">{o.customer?.phone} • {o.customer?.email}</p>
-                          </td>
-
-                          <td className="p-3.5 max-w-[200px] truncate">
-                            <span className="text-slate-600 text-[11px]">
-                              {o.customer?.address}, {o.customer?.city}, {o.customer?.pincode}
+                        {/* Pricing */}
+                        <div className="flex items-baseline gap-2 pt-1">
+                          {product.mrp > product.price && (
+                            <span className="text-xs text-slate-400 line-through">
+                              ₹{product.mrp}
                             </span>
-                          </td>
+                          )}
+                          <span className="text-lg font-black text-[#1b4d3e]">
+                            ₹{product.price}
+                          </span>
+                          {discount && (
+                            <span className="text-[10px] font-bold text-emerald-700">
+                              (Save ₹{discount.saving})
+                            </span>
+                          )}
+                        </div>
 
-                          <td className="p-3.5">
-                            <div className="space-y-0.5">
-                              {o.items?.map((item, i) => (
-                                <p key={i} className="text-[11px] text-slate-800">
-                                  {item.quantity}x {item.name}
-                                </p>
+                        {/* Variants Preview */}
+                        {product.variants && product.variants.length > 0 && (
+                          <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-500 space-y-1">
+                            <p className="font-bold text-slate-700">Pack Variants ({product.variants.length}):</p>
+                            <div className="flex flex-wrap gap-1">
+                              {product.variants.map((v, i) => (
+                                <span key={i} className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                                  {v.size}: ₹{v.price}
+                                </span>
                               ))}
                             </div>
-                          </td>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                          <td className="p-3.5 font-bold text-slate-900">
-                            ₹{o.totalAmount?.toLocaleString('en-IN')}
-                          </td>
+                    {/* Actions Bar */}
+                    <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-600">
+                        Stock: <span className="text-slate-900">{product.stock}</span>
+                      </span>
 
-                          {/* Order Status Dropdown */}
-                          <td className="p-3.5">
-                            <select
-                              value={o.status || 'paid'}
-                              onChange={(e) => handleOrderStatusChange(o._id, e.target.value)}
-                              className="bg-slate-100 text-xs font-bold text-slate-800 py-1.5 px-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                            >
-                              <option value="created">Created</option>
-                              <option value="paid">Paid (Confirmed)</option>
-                              <option value="processing">Processing Pack</option>
-                              <option value="shipped">Shipped</option>
-                              <option value="delivered">Delivered</option>
-                              <option value="cancelled">Cancelled</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td className="p-3.5 font-mono text-[11px] font-bold text-slate-900">
-                          order_rcpt_9821
-                        </td>
-                        <td className="p-3.5">
-                          <p className="font-bold text-slate-900">Sunil Deshmukh</p>
-                          <p className="text-[10px] text-slate-400">9820011223 • sunil@gmail.com</p>
-                        </td>
-                        <td className="p-3.5">
-                          <span className="text-slate-600 text-[11px]">Flat 502, Powai, Mumbai, 400076</span>
-                        </td>
-                        <td className="p-3.5">
-                          <p className="text-[11px] text-slate-800">2x Kitchen Towels (Pack of 4)</p>
-                        </td>
-                        <td className="p-3.5 font-bold text-slate-900">₹658</td>
-                        <td className="p-3.5">
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
-                            PAID
-                          </span>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditModal(product)}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteProduct(product._id)}
+                          className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Delete Product"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-
-        {/* ================= TAB 4: CUSTOMER QUERIES ================= */}
-        {activeTab === 'queries' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Customer Messages &amp; Bulk Inquiries</h2>
-              <p className="text-xs text-slate-500">
-                Inquiries submitted via the Contact Us page (Retail orders, restaurant &amp; hotel bulk quotes).
-              </p>
+        {/* ================= TAB 3: LIVE ORDERS ================= */}
+        {activeTab === 'orders' && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-5 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900">Customer Orders (Razorpay Live)</h3>
+              <p className="text-xs text-slate-500">Track paid orders, customer shipping addresses, and delivery status</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(queries.length > 0 ? queries : [
-                {
-                  _id: 'q1',
-                  name: 'Rohit Verma (Green Leaf Cafe)',
-                  email: 'rohit@greenleaf.com',
-                  phone: '+91 9876543210',
-                  inquiryType: 'Restaurant / Cafe / Hotel Orders',
-                  message: 'We require 50 cartons of 2-ply dinner tissue napkins and 20 packs of kitchen rolls every month for our cafe branches in Mumbai. Please send bulk wholesale pricing.',
-                  status: 'new',
-                  createdAt: '2026-08-24T10:00:00Z',
-                },
-                {
-                  _id: 'q2',
-                  name: 'Anjali Sharma',
-                  email: 'anjali@yahoo.com',
-                  phone: '+91 9811223344',
-                  inquiryType: 'Household / Personal Order',
-                  message: 'Is express same-day delivery available for South Delhi? Looking to order family toilet roll boxes.',
-                  status: 'responded',
-                  createdAt: '2026-08-23T14:30:00Z',
-                }
-              ]).map((q) => (
-                <div
-                  key={q._id}
-                  className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-3 flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-100">
+                  <tr>
+                    <th className="py-3 px-4">Order ID / Date</th>
+                    <th className="py-3 px-4">Customer</th>
+                    <th className="py-3 px-4">Address / Phone</th>
+                    <th className="py-3 px-4">Items</th>
+                    <th className="py-3 px-4">Total Amount</th>
+                    <th className="py-3 px-4">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {orders.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-12 text-center text-slate-400 font-medium">
+                        No customer orders received yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    orders.map((o) => (
+                      <tr key={o._id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3.5 px-4 font-mono">
+                          <p className="font-bold text-slate-800">{o.razorpayOrderId || o._id.slice(-8)}</p>
+                          <p className="text-[10px] text-slate-400">{new Date(o.createdAt).toLocaleDateString()}</p>
+                        </td>
+                        <td className="py-3.5 px-4 font-medium">
+                          <p className="font-bold text-slate-900">{o.customer?.name}</p>
+                          <p className="text-[10px] text-slate-400">{o.customer?.email}</p>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600 text-[11px]">
+                          <p>{o.customer?.address}, {o.customer?.city}</p>
+                          <p className="text-slate-400 font-mono text-[10px]">{o.customer?.phone} • {o.customer?.pincode}</p>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="font-bold text-slate-700">{o.items?.length || 1} items</span>
+                        </td>
+                        <td className="py-3.5 px-4 font-black text-emerald-800 text-sm">
+                          ₹{o.totalAmount?.toLocaleString('en-IN')}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <select
+                            value={o.status}
+                            onChange={(e) => handleOrderStatusChange(o._id, e.target.value)}
+                            className="text-xs font-bold px-2.5 py-1 rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                          >
+                            <option value="created">Created</option>
+                            <option value="paid">Paid (Confirmed)</option>
+                            <option value="processing">Processing</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="failed">Failed</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 4: CUSTOMER INQUIRIES ================= */}
+        {activeTab === 'queries' && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-5 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900">Inquiries &amp; Bulk Order Requests</h3>
+              <p className="text-xs text-slate-500">Manage contact form queries and hotel/restaurant supply quotes</p>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {queries.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 font-medium text-xs">
+                  No inquiries received yet.
+                </div>
+              ) : (
+                queries.map((q) => (
+                  <div key={q._id} className="p-5 space-y-2 hover:bg-slate-50/50 transition-colors">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                        {q.inquiryType}
-                      </span>
-                      
-                      {/* Query Status selector */}
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-xs">{q.name}</span>
+                        <span className="bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                          {q.inquiryType}
+                        </span>
+                      </div>
+
                       <select
-                        value={q.status || 'new'}
+                        value={q.status}
                         onChange={(e) => handleQueryStatusChange(q._id, e.target.value)}
-                        className={`text-[10px] font-bold py-1 px-2 rounded-md border cursor-pointer ${
-                          q.status === 'new'
-                            ? 'bg-amber-50 text-amber-800 border-amber-200'
-                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                        }`}
+                        className="text-xs font-bold px-2 py-1 rounded-lg border border-slate-200 bg-white"
                       >
-                        <option value="new">New Query</option>
+                        <option value="new">New</option>
                         <option value="in_progress">In Progress</option>
-                        <option value="responded">Responded / Contacted</option>
+                        <option value="responded">Responded</option>
                         <option value="closed">Closed</option>
                       </select>
                     </div>
 
-                    <h3 className="text-sm font-bold text-slate-900">{q.name}</h3>
-                    
-                    <div className="text-xs text-slate-500 space-y-0.5">
-                      <p className="flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{q.email}</span>
-                      </p>
-                      {q.phone && (
-                        <p className="flex items-center gap-1.5">
-                          <Phone className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{q.phone}</span>
-                        </p>
-                      )}
-                    </div>
+                    <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      {q.message}
+                    </p>
 
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 leading-relaxed">
-                      "{q.message}"
+                    <div className="flex items-center gap-4 text-[11px] text-slate-400 font-medium">
+                      <span>Email: <a href={`mailto:${q.email}`} className="text-emerald-700 hover:underline">{q.email}</a></span>
+                      <span>Phone: <a href={`tel:${q.phone}`} className="text-emerald-700 hover:underline">{q.phone}</a></span>
+                      <span>{new Date(q.createdAt).toLocaleString()}</span>
                     </div>
                   </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <a
-                      href={`mailto:${q.email}?subject=Nexbloom Inquiry Response`}
-                      className="text-xs font-bold text-emerald-700 hover:underline flex items-center gap-1"
-                    >
-                      <Mail className="w-3.5 h-3.5" />
-                      <span>Reply via Email</span>
-                    </a>
-
-                    {q.phone && (
-                      <a
-                        href={`https://wa.me/${q.phone.replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-lg transition-colors"
-                      >
-                        WhatsApp Chat
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
 
-      </main>
+      </div>
 
-
-      {/* ================= ADD / EDIT PRODUCT MODAL ================= */}
+      {/* ========================================================================= */}
+      {/* 🚀 COMPREHENSIVE ADD / EDIT PRODUCT MODAL (MULTIPLE IMAGES & VIDEOS & MRP) */}
+      {/* ========================================================================= */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xl my-8 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="relative w-full max-w-3xl bg-white rounded-3xl overflow-hidden shadow-2xl my-8 animate-scale-in border border-slate-200">
             
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <h3 className="text-base font-bold text-slate-900">
-                {editingProduct ? 'Edit Product & Pack Variants' : 'Add New Product to Store'}
-              </h3>
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">
+                  {editingProduct ? 'Edit Product Details' : 'Add New Tissue / Roll Product'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Set multiple images, demo video, MRP discount, pulls count &amp; pack quantities
+                </p>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200"
+                className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Form Body */}
-            <form onSubmit={handleSaveProduct} className="p-6 overflow-y-auto space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Product Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Nexbloom Kitchen Rolls"
-                  value={productForm.name}
-                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                  className="w-full bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+            <form onSubmit={handleSaveProduct} className="p-6 sm:p-7 space-y-6 max-h-[80vh] overflow-y-auto">
+              
+              {/* SECTION 1: BASIC INFORMATION */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
+                  <Package className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>1. Basic Product Info</span>
+                </h4>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Category *</label>
-                  <select
-                    value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                    className="w-full bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="Tissue Paper">Tissue Paper</option>
-                    <option value="Kitchen Roll">Kitchen Roll</option>
-                    <option value="Toilet Roll">Toilet Roll</option>
-                    <option value="Face Tissue">Face Tissue</option>
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Product Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. NexBloom SilkTouch Facial Tissue Box"
+                      value={productForm.name}
+                      onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                      className="w-full bg-slate-50 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:bg-white font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Category *</label>
+                    <select
+                      value={productForm.category}
+                      onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                      className="w-full bg-slate-50 text-xs font-bold text-slate-700 px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="Tissue Paper">Tissue Paper</option>
+                      <option value="Kitchen Roll">Kitchen Roll</option>
+                      <option value="Toilet Roll">Toilet Roll</option>
+                      <option value="Face Tissue">Face Tissue</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Ply Cushion</label>
+                    <select
+                      value={productForm.ply}
+                      onChange={(e) => setProductForm({ ...productForm, ply: e.target.value })}
+                      className="w-full bg-slate-50 text-xs font-bold text-slate-700 px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="1-Ply">1-Ply</option>
+                      <option value="2-Ply">2-Ply (Standard)</option>
+                      <option value="3-Ply">3-Ply (Ultra Luxury)</option>
+                      <option value="4-Ply">4-Ply (Heavy Duty)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Material Fiber</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 100% Virgin Pulp / Bamboo"
+                      value={productForm.material}
+                      onChange={(e) => setProductForm({ ...productForm, material: e.target.value })}
+                      className="w-full bg-slate-50 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:bg-white font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Pulls / Sheets Count</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 100 Pulls / Box"
+                      value={productForm.pullsCount}
+                      onChange={(e) => setProductForm({ ...productForm, pullsCount: e.target.value })}
+                      className="w-full bg-slate-50 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:bg-white font-medium"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Base Price (₹) *</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Short Tagline</label>
                   <input
-                    type="number"
-                    required
-                    value={productForm.price}
-                    onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
-                    className="w-full bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500"
+                    type="text"
+                    placeholder="e.g. 100% natural virgin wood pulp, ultra absorbent & soft"
+                    value={productForm.tagline}
+                    onChange={(e) => setProductForm({ ...productForm, tagline: e.target.value })}
+                    className="w-full bg-slate-50 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Stock Units *</label>
-                  <input
-                    type="number"
-                    required
-                    value={productForm.stock}
-                    onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })}
-                    className="w-full bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500"
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Full Description</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Describe softness, absorbency, food contact safety, and packaging details..."
+                    value={productForm.description}
+                    onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                    className="w-full bg-slate-50 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none"
                   />
                 </div>
               </div>
 
-              {/* ── Image Upload (Local → Cloudinary) ── */}
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Product Image *
-                </label>
+              {/* SECTION 2: PRICING & DISCOUNT (BEFORE/AFTER DISCOUNT) */}
+              <div className="space-y-3 bg-emerald-50/40 p-4 rounded-2xl border border-emerald-200/80">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Percent className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>2. Pricing &amp; Discount (MRP vs Selling Price)</span>
+                  </h4>
 
-                {/* Hidden file input */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                />
-
-                {/* Upload Button + Preview Row */}
-                <div className="flex items-start gap-3">
-                  
-                  {/* Drag-drop / Click area */}
-                  <button
-                    type="button"
-                    disabled={imageUploading}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`flex-1 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed rounded-xl py-5 transition-all cursor-pointer text-center
-                      ${imageUploading
-                        ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
-                        : 'border-slate-200 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50/50 text-slate-500 hover:text-emerald-700'
-                      }`}
-                  >
-                    {imageUploading ? (
-                      <>
-                        <svg className="w-5 h-5 animate-spin text-emerald-600" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                        </svg>
-                        <span className="text-xs font-bold">Uploading to Cloudinary...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-xs font-bold">Click to choose image</span>
-                        <span className="text-[10px]">JPG, PNG, WEBP — max 10MB</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Live Preview */}
-                  {productForm.image && (
-                    <div className="w-24 h-24 rounded-xl border-2 border-emerald-200 overflow-hidden bg-slate-100 shrink-0 relative">
-                      <img
-                        src={productForm.image}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setProductForm((prev) => ({ ...prev, image: '' }))}
-                        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center hover:bg-rose-600 text-[10px] leading-none"
-                        title="Remove image"
-                      >
-                        ×
-                      </button>
-                    </div>
+                  {currentDiscount && (
+                    <span className="text-[11px] font-black bg-emerald-700 text-white px-2.5 py-0.5 rounded-full shadow-2xs">
+                      {currentDiscount.percent}% OFF • Save ₹{currentDiscount.saving}
+                    </span>
                   )}
                 </div>
 
-                {/* Show current Cloudinary URL (read-only) */}
-                {productForm.image && (
-                  <p className="mt-1.5 text-[10px] text-slate-400 truncate">
-                    ✅ {productForm.image}
-                  </p>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* MRP (Original Price Before Discount) */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Original Price / MRP (₹) <span className="text-[10px] text-slate-400 font-normal">(Discount se pehle)</span>
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 249"
+                      value={productForm.mrp}
+                      onChange={(e) => setProductForm({ ...productForm, mrp: Number(e.target.value) })}
+                      className="w-full bg-white text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-bold"
+                    />
+                  </div>
+
+                  {/* Selling Price (Discounted Price) */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Selling Price (₹) * <span className="text-[10px] text-emerald-700 font-normal">(Discount ke baad)</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="e.g. 129"
+                      value={productForm.price}
+                      onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
+                      className="w-full bg-white text-xs px-3.5 py-2.5 rounded-xl border border-emerald-300 focus:outline-none focus:border-emerald-600 font-black text-emerald-900"
+                    />
+                  </div>
+
+                  {/* Stock Units */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Total Stock Units *</label>
+                    <input
+                      type="number"
+                      required
+                      value={productForm.stock}
+                      onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })}
+                      className="w-full bg-white text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-bold"
+                    />
+                  </div>
+                </div>
               </div>
 
+              {/* SECTION 3: MULTIPLE IMAGES & VIDEOS UPLOADER & GALLERY */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>3. Product Images &amp; Videos (Multiple)</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-400 font-bold">
+                    {(productForm.images?.length || 0)} Images • {(productForm.videos?.length || 0)} Videos
+                  </span>
+                </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Short Tagline</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 100% Virgin wood pulp, ultra absorbent"
-                  value={productForm.tagline}
-                  onChange={(e) => setProductForm({ ...productForm, tagline: e.target.value })}
-                  className="w-full bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+                {/* Upload Buttons Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  
+                  {/* Hidden inputs */}
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e, 'image')}
+                  />
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e, 'video')}
+                  />
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Full Description</label>
-                <textarea
-                  rows={3}
-                  value={productForm.description}
-                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                  className="w-full bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 resize-none"
-                />
-              </div>
-
-              {/* Quantity Pack Variants Builder */}
-              <div className="pt-2 border-t border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-800">Pack Quantity Variants &amp; Pricing:</label>
+                  {/* Upload Images Button */}
                   <button
                     type="button"
-                    onClick={addVariantRow}
-                    className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                    disabled={uploadingMedia}
+                    onClick={() => imageInputRef.current?.click()}
+                    className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-800 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Pack Variant</span>
+                    <Upload className="w-4 h-4 text-emerald-700" />
+                    <span>+ Upload Images from Local (Multiple)</span>
+                  </button>
+
+                  {/* Upload Videos Button */}
+                  <button
+                    type="button"
+                    disabled={uploadingMedia}
+                    onClick={() => videoInputRef.current?.click()}
+                    className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50/50 hover:bg-blue-50 text-blue-800 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <Video className="w-4 h-4 text-blue-700" />
+                    <span>+ Upload Demo Videos (MP4/WebM)</span>
                   </button>
                 </div>
 
-                <div className="space-y-2">
-                  {productForm.variants.map((v, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
-                      <input
-                        type="text"
-                        placeholder="Pack Name (e.g. Pack of 4)"
-                        value={v.size}
-                        onChange={(e) => updateVariant(idx, 'size', e.target.value)}
-                        className="flex-1 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Price (₹)"
-                        value={v.price}
-                        onChange={(e) => updateVariant(idx, 'price', e.target.value)}
-                        className="w-24 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200"
-                      />
+                {/* Direct URL Input Row */}
+                <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                  <select
+                    value={mediaTypeInput}
+                    onChange={(e) => setMediaTypeInput(e.target.value)}
+                    className="bg-white text-[11px] font-bold text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200"
+                  >
+                    <option value="image">Image URL</option>
+                    <option value="video">Video URL</option>
+                  </select>
+                  <input
+                    type="url"
+                    placeholder="Or paste Cloudinary / Web URL here..."
+                    value={mediaUrlInput}
+                    onChange={(e) => setMediaUrlInput(e.target.value)}
+                    className="flex-1 bg-white text-xs px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddMediaUrl}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                {/* Upload Status Alert */}
+                {uploadingMedia && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center gap-2 font-bold animate-pulse">
+                    <RefreshCw className="w-4 h-4 animate-spin text-emerald-700 shrink-0" />
+                    <span>{uploadProgressText || 'Uploading to Cloudinary...'}</span>
+                  </div>
+                )}
+
+                {/* ================= MEDIA PREVIEWS GALLERY ================= */}
+                {((productForm.images && productForm.images.length > 0) || (productForm.videos && productForm.videos.length > 0)) && (
+                  <div className="space-y-3 pt-2">
+                    
+                    {/* Images Gallery */}
+                    {productForm.images && productForm.images.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-600 mb-2">Uploaded Images ({productForm.images.length}):</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {productForm.images.map((imgUrl, idx) => {
+                            const isMain = productForm.image === imgUrl || (!productForm.image && idx === 0);
+                            return (
+                              <div
+                                key={idx}
+                                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all bg-slate-100 group ${
+                                  isMain ? 'border-emerald-500 shadow-sm' : 'border-slate-200'
+                                }`}
+                              >
+                                <img src={imgUrl} alt={`Product media ${idx}`} className="w-full h-full object-cover" />
+
+                                {/* Main Image Badge */}
+                                {isMain && (
+                                  <span className="absolute top-1.5 left-1.5 bg-emerald-700 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                                    ★ MAIN
+                                  </span>
+                                )}
+
+                                {/* Set as Main Button */}
+                                {!isMain && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetPrimaryImage(imgUrl)}
+                                    className="absolute bottom-1.5 left-1.5 bg-white/90 hover:bg-white text-slate-800 text-[9px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                                  >
+                                    Set Main
+                                  </button>
+                                )}
+
+                                {/* ✕ CUT / REMOVE BUTTON */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveImage(idx)}
+                                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center font-bold text-xs shadow-md transition-transform hover:scale-110 cursor-pointer"
+                                  title="Cut / Remove image"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Videos Gallery */}
+                    {productForm.videos && productForm.videos.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-600 mb-2">Uploaded Videos ({productForm.videos.length}):</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {productForm.videos.map((vidUrl, idx) => (
+                            <div key={idx} className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-900 group">
+                              <video
+                                src={vidUrl}
+                                controls
+                                className="w-full aspect-video object-contain"
+                              />
+                              <span className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow-xs pointer-events-none">
+                                <Film className="w-3 h-3" />
+                                <span>VIDEO {idx + 1}</span>
+                              </span>
+
+                              {/* ✕ CUT / REMOVE VIDEO BUTTON */}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVideo(idx)}
+                                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center font-bold text-xs shadow-md cursor-pointer z-10"
+                                title="Cut / Remove video"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION 4: PRODUCT HIGHLIGHTS & SPECS */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>4. Key Product Highlights / Bullet Points</span>
+                </h4>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. Hypoallergenic & Dermatologically Safe"
+                    value={specInput}
+                    onChange={(e) => setSpecInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSpec(); } }}
+                    className="flex-1 bg-slate-50 text-xs px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddSpec}
+                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl border border-emerald-300 cursor-pointer"
+                  >
+                    + Add Point
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {productForm.specs?.map((s, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5"
+                    >
+                      <span>✓ {s}</span>
                       <button
                         type="button"
-                        onClick={() => removeVariantRow(idx)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded"
-                        title="Remove Variant"
+                        onClick={() => handleRemoveSpec(idx)}
+                        className="text-slate-400 hover:text-rose-600 font-bold"
+                        title="Remove highlight"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        ✕
                       </button>
-                    </div>
+                    </span>
                   ))}
                 </div>
               </div>
 
+              {/* SECTION 5: PACK QUANTITY VARIANTS TABLE */}
+              <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>5. Pack Quantity Variants &amp; Pricing</span>
+                    </h4>
+                    <p className="text-[10px] text-slate-500">Add combo packs (Pack of 2, 4, 6, 8, 12) with custom MRP and discount price</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addVariantRow}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Add Pack Variant</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {productForm.variants.map((v, idx) => {
+                    const varDiscount = calculateDiscount(v.mrp, v.price);
+                    return (
+                      <div key={idx} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                          <div className="sm:col-span-2">
+                            <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Pack Name *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. Pack of 4 (400 Sheets)"
+                              value={v.size}
+                              onChange={(e) => updateVariant(idx, 'size', e.target.value)}
+                              className="w-full bg-slate-50 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 font-bold"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-0.5">MRP (₹)</label>
+                            <input
+                              type="number"
+                              placeholder="MRP"
+                              value={v.mrp || ''}
+                              onChange={(e) => updateVariant(idx, 'mrp', e.target.value)}
+                              className="w-full bg-slate-50 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-emerald-700 block mb-0.5">Price (₹) *</label>
+                            <input
+                              type="number"
+                              required
+                              placeholder="Selling Price"
+                              value={v.price}
+                              onChange={(e) => updateVariant(idx, 'price', e.target.value)}
+                              className="w-full bg-emerald-50 text-xs px-2.5 py-1.5 rounded-lg border border-emerald-300 font-black text-emerald-900"
+                            />
+                          </div>
+
+                          <div className="flex items-end justify-between gap-1">
+                            <div className="flex-1">
+                              <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Stock</label>
+                              <input
+                                type="number"
+                                placeholder="Stock"
+                                value={v.stock}
+                                onChange={(e) => updateVariant(idx, 'stock', e.target.value)}
+                                className="w-full bg-slate-50 text-xs px-2 py-1.5 rounded-lg border border-slate-200"
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => removeVariantRow(idx)}
+                              className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 cursor-pointer"
+                              title="Delete this variant"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Variant details & discount badge */}
+                        <div className="flex items-center justify-between text-[10px]">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              placeholder="Pulls count / Unit details (e.g. 100 Pulls / Box)"
+                              value={v.pulls || v.unitWeight || ''}
+                              onChange={(e) => updateVariant(idx, 'pulls', e.target.value)}
+                              className="bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-slate-600 text-[10px] w-48"
+                            />
+                          </div>
+
+                          {varDiscount && (
+                            <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                              {varDiscount.percent}% OFF (Save ₹{varDiscount.saving})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Submit Buttons */}
-              <div className="pt-4 border-t border-slate-200 flex justify-end gap-2.5">
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3 sticky bottom-0 bg-white py-2">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-xs cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-[#1b4d3e] hover:bg-[#143c30] text-white font-black text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2"
                 >
-                  Save &amp; Publish Product
+                  <Check className="w-4 h-4" />
+                  <span>{editingProduct ? 'Update Product' : 'Save & Publish to Store'}</span>
                 </button>
               </div>
+
             </form>
 
           </div>

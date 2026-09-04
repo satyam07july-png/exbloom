@@ -48,8 +48,12 @@ model Product {
   id          String           @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   category    String           // "Tissue Paper", "Kitchen Roll", "Toilet Roll", "Face Tissue"
-  price       Float            // Base price for smallest pack
-  image       String
+  price       Float            // Selling / Discounted Price (Discount ke baad ka amount)
+  mrp         Float            @default(0) // Original Price / MRP (Discount se pehle ka amount)
+  image       String           // Main / Primary Image
+  images      String[]         // Multiple Product Images
+  videos      String[]         // Multiple Product Videos
+  pullsCount  String?          // e.g. "100 Pulls / Box", "200 Sheets / Roll"
   tagline     String?
   description String?
   specs       String[]
@@ -65,10 +69,12 @@ model Product {
 
 // Embedded Product Variant Type
 type ProductVariant {
-  size       String // e.g. "Pack of 2", "Pack of 4", "Pack of 6", "Pack of 12"
-  price      Float
+  size       String  // e.g. "Pack of 2 (200 Sheets)", "Pack of 4"
+  price      Float   // Selling price
+  mrp        Float?  @default(0) // Original MRP before discount
   stock      Int     @default(20)
-  unitWeight String? // e.g. "100 Pulls per box", "200 Sheets per roll"
+  unitWeight String? // e.g. "100 Sheets / Pack"
+  pulls      String? // e.g. "100 Pulls"
 }
 
 // ==========================================

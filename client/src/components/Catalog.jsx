@@ -203,6 +203,13 @@ export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
                     />
 
+                    {/* Pulls / Sheets badge */}
+                    {product.pullsCount && (
+                      <span className="absolute top-2.5 left-2.5 bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-xs">
+                        {product.pullsCount}
+                      </span>
+                    )}
+
                     <span className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-xs border border-slate-200 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-md">
                       {product.ply || '2-Ply'}
                     </span>
@@ -263,9 +270,16 @@ export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory
                       <span className="text-[10px] text-slate-400 block leading-none font-medium">
                         {activeVariant.size.split('(')[0].trim()}
                       </span>
-                      <span className="text-base font-bold text-slate-900">
-                        ₹{activeVariant.price.toLocaleString('en-IN')}
-                      </span>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        {(activeVariant.mrp || product.mrp) > activeVariant.price && (
+                          <span className="text-[11px] text-slate-400 line-through">
+                            ₹{(activeVariant.mrp || product.mrp).toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        <span className="text-base font-black text-[#1b4d3e]">
+                          ₹{activeVariant.price.toLocaleString('en-IN')}
+                        </span>
+                      </div>
                     </div>
 
                     <button

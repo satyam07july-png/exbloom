@@ -124,11 +124,11 @@ export const FeaturedProducts = ({ onExploreAll }) => {
             const isActive = activeCardId === product._id;
             // Use first variant data for display
             const firstVariant = product.variants?.[0];
-            const displayPrice = firstVariant?.price ?? product.price;
-            const displaySize = firstVariant?.size ?? '';
-            // Calculate discount if originalPrice exists
-            const discountPercent = product.originalPrice
-              ? `-${Math.round(((product.originalPrice - displayPrice) / product.originalPrice) * 100)}%`
+            const displayPrice = firstVariant?.price ?? product.price ?? 0;
+            const originalPrice = product.mrp || product.originalPrice || firstVariant?.mrp || 0;
+            const hasDiscount = originalPrice > displayPrice;
+            const discountPercent = hasDiscount
+              ? `-${Math.round(((originalPrice - displayPrice) / originalPrice) * 100)}%`
               : null;
 
             return (
@@ -147,7 +147,7 @@ export const FeaturedProducts = ({ onExploreAll }) => {
 
                     {/* Discount Badge */}
                     {discountPercent && (
-                      <div className="absolute top-3 left-3 z-10 w-11 h-11 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-xs font-bold shadow-md">
+                      <div className="absolute top-3 left-3 z-10 px-2 py-1 rounded-lg bg-[#1b4d3e] text-white flex items-center justify-center text-[10px] font-black shadow-md tracking-wider">
                         {discountPercent}
                       </div>
                     )}
@@ -166,9 +166,9 @@ export const FeaturedProducts = ({ onExploreAll }) => {
                     {/* Product Image */}
                     <img
                       src={
-                        isActive && product.secondaryImage
-                          ? product.secondaryImage
-                          : product.image
+                        isActive && (product.images?.[1] || product.secondaryImage)
+                          ? (product.images?.[1] || product.secondaryImage)
+                          : (product.image || product.images?.[0] || '/redefine-tissue-box.webp')
                       }
                       alt={product.name}
                       className="w-full h-full object-cover object-center group-hover:scale-104 transition-all duration-500 rounded-xl"
@@ -181,19 +181,27 @@ export const FeaturedProducts = ({ onExploreAll }) => {
                       {product.name}
                     </h3>
 
-                    <p className="text-[11px] text-slate-400 font-medium">
-                      {product.tagline || product.category}
-                    </p>
+                    {/* Pulls / Sheets or Tagline */}
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      {product.pullsCount && (
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                          {product.pullsCount}
+                        </span>
+                      )}
+                      <p className="text-[11px] text-slate-400 font-medium truncate max-w-[150px]">
+                        {product.tagline || product.category}
+                      </p>
+                    </div>
 
-                    {/* Pricing */}
+                    {/* Pricing (MRP strikethrough + Selling Price) */}
                     <div className="flex items-center justify-center gap-2 pt-1">
-                      {product.originalPrice && (
+                      {hasDiscount && (
                         <span className="text-xs text-slate-400 line-through">
-                          ₹{product.originalPrice.toFixed(2)}
+                          ₹{originalPrice}
                         </span>
                       )}
                       <span className="text-base sm:text-lg font-black text-[#1b4d3e]">
-                        ₹{displayPrice.toFixed(2)}
+                        ₹{displayPrice}
                       </span>
                     </div>
 

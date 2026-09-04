@@ -1,13 +1,25 @@
 const mongoose = require("mongoose");
 
 async function connectDB() {
+  const primaryUri = process.env.MONGO_URI;
+  const localUri = "mongodb://127.0.0.1:27017/Nexbloom";
+
   try {
-    const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/groove-supply";
+    const uri = primaryUri || localUri;
     await mongoose.connect(uri);
-    console.log("MongoDB connected:", uri);
+    console.log("MongoDB connected:", uri.includes('@') ? 'MongoDB Atlas Cloud' : uri);
   } catch (err) {
-    console.error("MongoDB connection error:", err.message);
-    process.exit(1); // server band kar do agar DB connect na ho
+    console.error("Primary MongoDB connection notice:", err.message);
+    // If primary cloud connection failed, fallback to local MongoDB
+    if (primaryUri && primaryUri !== localUri) {
+      try {
+        console.log("Connecting to Local MongoDB fallback...");
+        await mongoose.connect(localUri);
+        console.log("Local MongoDB connected:", localUri);
+      } catch (localErr) {
+        console.error("Local MongoDB also unreachable:", localErr.message);
+      }
+    }
   }
 }
 

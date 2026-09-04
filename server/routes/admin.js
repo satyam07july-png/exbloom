@@ -131,26 +131,61 @@ router.get("/products", protectAdmin, async (req, res) => {
 
 router.post("/products", protectAdmin, async (req, res) => {
   try {
-    const { name, category, price, image, tagline, description, specs, ply, material, stock, variants } = req.body;
+    const { 
+      name, 
+      category, 
+      price, 
+      mrp, 
+      image, 
+      images, 
+      videos, 
+      pullsCount, 
+      tagline, 
+      description, 
+      specs, 
+      ply, 
+      material, 
+      stock, 
+      variants 
+    } = req.body;
 
-    if (!name || !category || !price) {
+    if (!name || !category || price === undefined || price === null || price === '') {
       return res.status(400).json({ error: "Name, category, and price are required" });
     }
 
+    // Process images array
+    const imageList = Array.isArray(images) && images.length > 0 
+      ? images.filter(Boolean) 
+      : (image ? [image] : ["https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80"]);
+    
+    // Process videos array
+    const videoList = Array.isArray(videos) ? videos.filter(Boolean) : [];
+
     const newProduct = new Product({
-      name,
-      category,
+      name: name.trim(),
+      category: category.trim(),
       price: Number(price),
-      image: image || "https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80",
+      mrp: mrp ? Number(mrp) : 0,
+      image: imageList[0] || image || "https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80",
+      images: imageList,
+      videos: videoList,
+      pullsCount: pullsCount || "",
       tagline: tagline || "",
       description: description || "",
       specs: Array.isArray(specs) ? specs : (specs ? specs.split(",").map(s => s.trim()) : []),
       ply: ply || "2-Ply",
       material: material || "100% Virgin Pulp",
       stock: Number(stock) || 50,
-      variants: variants && variants.length > 0 ? variants : [
-        { size: "Pack of 2", price: Number(price), stock: Number(stock) || 50 },
-        { size: "Pack of 4", price: Math.round(Number(price) * 1.9), stock: 30 },
+      variants: variants && variants.length > 0 ? variants.map(v => ({
+        size: v.size || "Standard Pack",
+        price: Number(v.price) || Number(price),
+        mrp: v.mrp ? Number(v.mrp) : 0,
+        stock: v.stock !== undefined ? Number(v.stock) : 20,
+        unitWeight: v.unitWeight || "",
+        pulls: v.pulls || "",
+      })) : [
+        { size: "Pack of 2", price: Number(price), mrp: mrp ? Number(mrp) : 0, stock: Number(stock) || 50, pulls: pullsCount || "" },
+        { size: "Pack of 4", price: Math.round(Number(price) * 1.9), mrp: mrp ? Math.round(Number(mrp) * 1.9) : 0, stock: 30, pulls: pullsCount || "" },
       ],
     });
 
@@ -158,19 +193,31 @@ router.post("/products", protectAdmin, async (req, res) => {
     res.json({ success: true, product: saved });
   } catch (err) {
     console.error("Create product error:", err);
-    res.status(500).json({ error: "Failed to create product" });
+    res.status(500).json({ error: `Failed to create product: ${err.message}` });
   }
 });
 
 router.put("/products/:id", protectAdmin, async (req, res) => {
   try {
-    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updateData = { ...req.body };
+    if (updateData.price !== undefined) updateData.price = Number(updateData.price);
+    if (updateData.mrp !== undefined) updateData.mrp = Number(updateData.mrp);
+    if (updateData.stock !== undefined) updateData.stock = Number(updateData.stock);
+
+    if (Array.isArray(updateData.images) && updateData.images.length > 0) {
+      updateData.image = updateData.images[0];
+    } else if (updateData.image && (!updateData.images || updateData.images.length === 0)) {
+      updateData.images = [updateData.image];
+    }
+
+    const updated = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!updated) {
       return res.status(404).json({ error: "Product not found" });
     }
     res.json({ success: true, product: updated });
   } catch (err) {
-    res.status(500).json({ error: "Failed to update product" });
+    console.error("Update product error:", err);
+    res.status(500).json({ error: `Failed to update product: ${err.message}` });
   }
 });
 
