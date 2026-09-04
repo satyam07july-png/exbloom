@@ -13,7 +13,7 @@ const slides = [
       id: 2,
       title: 'SilkTouch Skincare Wipes',
       subtitle: 'Dermatologist Safe & Gentle',
-      image: 'https://images.unsplash.com/photo-1512290900672-1f02e3597c5e?auto=format&fit=crop&w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=800&q=80',
     },
     {
       id: 3,

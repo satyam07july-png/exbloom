@@ -16,16 +16,17 @@ export const RedefiningCare = () => {
         </div>
 
         {/*
-          SEAMLESS SINGLE CONTAINER (3 EQUAL COLUMNS, ZERO GAP):
-          - Col 1 (1/3): Square recycling poster (same size)
-          - Col 2 (1/3): Square tissue box (same size)
-          - Col 3 (1/3): Exact same square size, divided into 2 equal stacked images (toilet roll + kitchen roll)
+          SEAMLESS 3-COLUMN CONTAINER:
+          - Parent: rounded single frame with zero inner gaps
+          - Col 1: aspect-square (1:1 square)
+          - Col 2: aspect-square (1:1 square)
+          - Col 3: aspect-square containing 2 equal height (h-1/2) stacked images
         */}
-        <div className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm bg-slate-100">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
+        <div className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm bg-slate-50">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-0 items-stretch">
             
             {/* COLUMN 1: Recycling Poster (Left Square) */}
-            <div className="aspect-square w-full relative overflow-hidden bg-[#ece8de] flex items-center justify-center">
+            <div className="relative aspect-square w-full overflow-hidden bg-[#ece8de] flex items-center justify-center">
               <img
                 src="/redefine-recycling.webp"
                 alt="Thoughtfully Made. Easily Recycled."
@@ -34,8 +35,8 @@ export const RedefiningCare = () => {
               />
             </div>
 
-            {/* COLUMN 2: Tissue Box (Middle Square, Same Size) */}
-            <div className="aspect-square w-full relative overflow-hidden bg-[#1e2e1e] flex items-center justify-center border-t md:border-t-0 md:border-l border-slate-200/50">
+            {/* COLUMN 2: Tissue Box (Middle Square, Exact Same Size) */}
+            <div className="relative aspect-square w-full overflow-hidden bg-[#1e2e1e] flex items-center justify-center border-t md:border-t-0 md:border-l border-slate-200/50">
               <img
                 src="/redefine-tissue-box.webp"
                 alt="NexBloom Facial Tissue Box"
@@ -44,11 +45,11 @@ export const RedefiningCare = () => {
               />
             </div>
 
-            {/* COLUMN 3: 2 Stacked Images (Right Square, Same Total Size as Left/Middle) */}
-            <div className="aspect-square w-full grid grid-rows-2 gap-0 overflow-hidden border-t md:border-t-0 md:border-l border-slate-200/50">
+            {/* COLUMN 3: 2 Stacked Images (Right Square, Exact Same Height & Width as Col 1 & 2) */}
+            <div className="relative aspect-square w-full overflow-hidden flex flex-col border-t md:border-t-0 md:border-l border-slate-200/50">
               
-              {/* Top Row: Toilet Roll */}
-              <div className="relative overflow-hidden bg-[#f3ede4] flex items-center justify-center border-b border-slate-200/40">
+              {/* Top Row: Toilet Roll (Takes 50% height) */}
+              <div className="relative h-1/2 w-full overflow-hidden bg-[#f3ede4] flex items-center justify-center border-b border-slate-200/40">
                 <img
                   src="/redefine-toilet-roll-wide.webp"
                   alt="NexBloom Toilet Roll"
@@ -57,8 +58,8 @@ export const RedefiningCare = () => {
                 />
               </div>
 
-              {/* Bottom Row: Kitchen Roll */}
-              <div className="relative overflow-hidden bg-[#f9f7f3] flex items-center justify-center">
+              {/* Bottom Row: Kitchen Roll (Takes 50% height) */}
+              <div className="relative h-1/2 w-full overflow-hidden bg-[#f9f7f3] flex items-center justify-center">
                 <img
                   src="/redefine-kitchen-roll-wide.webp"
                   alt="NexBloom Kitchen Towel Roll"
