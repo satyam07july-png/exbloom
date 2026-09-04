@@ -8,6 +8,7 @@
     "server": "node server/server.js",
     "seed": "node server/seed.js",
     "create-admin": "node server/create-admin.js",
+    "gen-jwt": "node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",
     "prisma:generate": "prisma generate",
     "client": "npm run dev --prefix client",
     "build": "npm run build --prefix client",
