@@ -1,23 +1,17 @@
 import React, { useState } from 'react';
 import { 
   X, 
-  Mail, 
-  Lock, 
   Eye, 
   EyeOff, 
-  User, 
-  Phone, 
-  ShieldCheck, 
-  ArrowRight, 
-  AlertCircle, 
-  CheckCircle2, 
-  Key 
+  User as UserIcon, 
+  AlertCircle 
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import BASE_URL from '../utils/api';
 
 export const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [isRegister, setIsRegister] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -55,7 +49,6 @@ export const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        // Save token & user to localStorage
         if (data.role === 'admin') {
           localStorage.setItem('nexbloom_admin_token', data.token);
           localStorage.setItem('nexbloom_admin_user', JSON.stringify(data.user));
@@ -79,147 +72,92 @@ export const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
     }
   };
 
-  const handleFillAdminDemo = () => {
-    setIsRegister(false);
-    setFormData({
-      ...formData,
-      email: 'admin@nexbloom.com',
-      password: 'admin123',
-    });
-    setError(null);
-  };
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl my-6 animate-scale-in">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="relative w-full max-w-[420px] bg-white rounded-3xl overflow-hidden shadow-2xl my-6 animate-scale-in border border-slate-100">
         
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        {/* Modal Header */}
-        <div className="pt-8 pb-5 px-6 text-center space-y-2 border-b border-slate-100 bg-slate-50/60">
-          <img
-            src="/logo.png"
-            alt="NexBloom Logo"
-            className="h-10 w-auto object-contain mx-auto"
-          />
-          <h2 className="text-lg font-bold text-slate-900">
-            {isRegister ? 'Create Your NexBloom Account' : 'Sign in to NexBloom'}
+        {/* ================= MODAL HEADER ================= */}
+        <div className="pt-6 pb-4 px-7 flex items-center justify-between border-b border-slate-100">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            {isRegister ? 'Register' : 'Sign in'}
           </h2>
-          <p className="text-xs text-slate-500 max-w-xs mx-auto">
-            {isRegister
-              ? 'Join for exclusive pack discounts & express delivery tracking'
-              : 'Login with your account or admin credentials'}
-          </p>
-        </div>
-
-        {/* Tab Toggle (Sign In / Register) */}
-        <div className="flex border-b border-slate-100 bg-slate-50/30 text-xs font-bold">
+          
           <button
-            type="button"
-            onClick={() => {
-              setIsRegister(false);
-              setError(null);
-            }}
-            className={`flex-1 py-3 text-center transition-colors cursor-pointer ${
-              !isRegister
-                ? 'text-emerald-700 border-b-2 border-emerald-600 bg-white'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
+            onClick={onClose}
+            className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-slate-100"
           >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegister(true);
-              setError(null);
-            }}
-            className={`flex-1 py-3 text-center transition-colors cursor-pointer ${
-              isRegister
-                ? 'text-emerald-700 border-b-2 border-emerald-600 bg-white'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Create Account
+            <X className="w-3.5 h-3.5" />
+            <span>Close</span>
           </button>
         </div>
 
-        {/* Error Alert */}
+        {/* ================= ERROR ALERT ================= */}
         {error && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+          <div className="mx-7 mt-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Main Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* ================= FORM BODY ================= */}
+        <form onSubmit={handleSubmit} className="p-7 space-y-4">
+          
+          {/* Full Name (Only for Register) */}
           {isRegister && (
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
-                Full Name *
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-800 block">
+                Full Name <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  placeholder="e.g. Rahul Sharma"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full bg-slate-50 text-xs text-slate-800 placeholder-slate-400 pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:bg-white"
-                />
-                <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              </div>
+              <input
+                type="text"
+                name="name"
+                required
+                placeholder="Your full name"
+                value={formData.name}
+                onChange={handleChange}
+                className="w-full bg-white text-xs text-slate-900 placeholder-slate-400 px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-[#1b4d3e] focus:ring-1 focus:ring-[#1b4d3e] transition-all"
+              />
             </div>
           )}
 
-          <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">
-              Email Address *
+          {/* Email / Username Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-800 block">
+              {isRegister ? 'Email address' : 'Username or email address'}{' '}
+              <span className="text-rose-500">*</span>
             </label>
-            <div className="relative">
-              <input
-                type="email"
-                name="email"
-                required
-                placeholder="name@example.com"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full bg-slate-50 text-xs text-slate-800 placeholder-slate-400 pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:bg-white"
-              />
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            </div>
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder={isRegister ? 'name@example.com' : 'Your email address'}
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full bg-white text-xs text-slate-900 placeholder-slate-400 px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-[#1b4d3e] focus:ring-1 focus:ring-[#1b4d3e] transition-all"
+            />
           </div>
 
+          {/* Phone Number (Optional on Register) */}
           {isRegister && (
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
-                Mobile Number (for Delivery Updates)
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-800 block">
+                Phone Number (Optional)
               </label>
-              <div className="relative">
-                <input
-                  type="tel"
-                  name="phone"
-                  placeholder="+91 9876543210"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="w-full bg-slate-50 text-xs text-slate-800 placeholder-slate-400 pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:bg-white"
-                />
-                <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              </div>
+              <input
+                type="tel"
+                name="phone"
+                placeholder="+91 9876543210"
+                value={formData.phone}
+                onChange={handleChange}
+                className="w-full bg-white text-xs text-slate-900 placeholder-slate-400 px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-[#1b4d3e] focus:ring-1 focus:ring-[#1b4d3e] transition-all"
+              />
             </div>
           )}
 
-          <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">
-              Password *
+          {/* Password Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-800 block">
+              Password <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -229,48 +167,91 @@ export const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full bg-slate-50 text-xs text-slate-800 placeholder-slate-400 pl-9 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                className="w-full bg-white text-xs text-slate-900 placeholder-slate-400 pl-4 pr-10 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-[#1b4d3e] focus:ring-1 focus:ring-[#1b4d3e] transition-all"
               />
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-          >
-            {loading ? (
-              <span>Authenticating...</span>
-            ) : (
-              <>
-                <span>{isRegister ? 'Create Account & Continue' : 'Sign In'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+          {/* Register Privacy Notice */}
+          {isRegister && (
+            <p className="text-[11px] text-slate-500 leading-relaxed pt-1">
+              Your personal data will be used to support your experience throughout this website, to manage access to your account, and for other purposes described in our <span className="text-[#1b4d3e] font-semibold cursor-pointer underline">privacy policy</span>.
+            </p>
+          )}
 
-          {/* Helper button for admin login */}
+          {/* Big Green LOG IN / REGISTER Button */}
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 px-6 rounded-full bg-[#1b4d3e] hover:bg-[#143c30] text-white font-extrabold text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50 text-center"
+            >
+              {loading ? (
+                <span>Please wait...</span>
+              ) : (
+                <span>{isRegister ? 'REGISTER' : 'LOG IN'}</span>
+              )}
+            </button>
+          </div>
+
+          {/* Remember me & Lost your password row (Only on Sign In) */}
           {!isRegister && (
-            <div className="pt-2 border-t border-slate-100 text-center">
+            <div className="flex items-center justify-between pt-1 text-xs">
+              <label className="flex items-center gap-2 text-slate-700 font-medium cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-slate-300 text-[#1b4d3e] focus:ring-[#1b4d3e] cursor-pointer"
+                />
+                <span>Remember me</span>
+              </label>
+
               <button
                 type="button"
-                onClick={handleFillAdminDemo}
-                className="text-[11px] text-slate-500 hover:text-emerald-700 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
+                onClick={() => alert('Password reset link will be sent to your registered email.')}
+                className="text-[#1b4d3e] hover:underline font-semibold cursor-pointer"
               >
-                <Key className="w-3 h-3 text-emerald-600" />
-                <span>Fill Admin Credentials (<code className="text-emerald-700">admin@nexbloom.com</code>)</span>
+                Lost your password?
               </button>
             </div>
           )}
         </form>
+
+        {/* ================= BOTTOM TOGGLE SECTION ================= */}
+        <div className="border-t border-slate-100 bg-slate-50/40 p-7 text-center space-y-3">
+          
+          {/* Avatar Icon */}
+          <div className="w-14 h-14 rounded-full bg-slate-100 border border-slate-200/80 mx-auto flex items-center justify-center text-slate-300">
+            <UserIcon className="w-7 h-7 stroke-[1.5]" />
+          </div>
+
+          <div>
+            <p className="text-xs font-bold text-slate-800 mb-1">
+              {isRegister ? 'Already have an account?' : 'No account yet?'}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegister(!isRegister);
+                setError(null);
+              }}
+              className="text-xs font-black text-slate-900 hover:text-[#1b4d3e] uppercase tracking-wider underline cursor-pointer transition-colors"
+            >
+              {isRegister ? 'LOG IN' : 'CREATE AN ACCOUNT'}
+            </button>
+          </div>
+
+        </div>
 
       </div>
     </div>
