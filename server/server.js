@@ -7,24 +7,8 @@ const connectDB = require("./config/db")
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS: allow Vercel frontend in prod, localhost in dev
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:5173",
-  process.env.CLIENT_URL, // e.g. https://nexbloom.vercel.app
-].filter(Boolean);
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error("CORS: Origin not allowed — " + origin));
-  },
-  credentials: true,
-}));
+// CORS: allow all origins (works on Vercel, localhost, mobile, everywhere)
+app.use(cors({ origin: "*", credentials: false }));
 
 app.use(express.json()); // JSON body parse karo
 
