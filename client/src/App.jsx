@@ -22,6 +22,7 @@ import { Reviews } from './components/Reviews';
 import { ValuePillars } from './components/ValuePillars';
 import { Footer } from './components/Footer';
 import { Check } from 'lucide-react';
+import BASE_URL from './utils/api';
 
 const sampleFallbackProducts = [
   {
@@ -159,7 +160,7 @@ function MainContent() {
   const { toastMessage, showToast } = useCart();
 
   useEffect(() => {
-    fetch('/api/products')
+    fetch(`${BASE_URL}/api/products`)
       .then((res) => {
         if (!res.ok) throw new Error('API offline');
         return res.json();
