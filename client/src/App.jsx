@@ -11,6 +11,7 @@ import { ContactUs } from './components/ContactUs';
 import { AdminPortal } from './components/AdminPortal';
 import { AuthModal } from './components/AuthModal';
 import { ProductDetailModal } from './components/ProductDetailModal';
+import { ProductDetailPage } from './components/ProductDetailPage';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
@@ -42,7 +43,7 @@ function MainContent() {
     }
   });
 
-  const { toastMessage, showToast } = useCart();
+  const { toastMessage, showToast, selectedProduct, setSelectedProduct } = useCart();
 
   useEffect(() => {
     fetch(`${BASE_URL}/api/products`)
@@ -61,14 +62,22 @@ function MainContent() {
   }, []);
 
   const handleSelectCategory = (cat) => {
+    setSelectedProduct(null);
     setSelectedCategory(cat);
     setActiveTab('catalog');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleExploreAll = () => {
+    setSelectedProduct(null);
     setActiveTab('catalog');
     setSelectedCategory('All');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleTabChange = (tab) => {
+    setSelectedProduct(null);
+    setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -77,6 +86,7 @@ function MainContent() {
     if (authData.role === 'admin') {
       showToast('Welcome Administrator! Opening Admin Portal...');
       setTimeout(() => {
+        setSelectedProduct(null);
         setActiveTab('admin');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 300);
@@ -123,8 +133,8 @@ function MainContent() {
 
       {/* Navigation */}
       <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        activeTab={selectedProduct ? '' : activeTab}
+        setActiveTab={handleTabChange}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -134,52 +144,69 @@ function MainContent() {
 
       {/* Main Content Router */}
       <main className="flex-1">
-        {activeTab === 'home' && (
-          <div>
-            <Hero
-              onExploreClick={handleExploreAll}
-            />
-            <TrustBadges />
-            <FeaturedProducts
-              products={products}
-              onExploreAll={handleExploreAll}
-            />
-            <FeaturedCategories onSelectCategory={handleSelectCategory} />
-            <GreenMission onExploreClick={handleExploreAll} />
-            <RedefiningCare />
-            <UpgradeToBetterCare />
-            <Reviews />
-            <Blogs isSection={true} />
-          </div>
-        )}
+        {selectedProduct ? (
+          <ProductDetailPage
+            product={selectedProduct}
+            products={products}
+            onBackToCatalog={() => {
+              setSelectedProduct(null);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onSelectProduct={(p) => {
+              setSelectedProduct(p);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        ) : (
+          <>
+            {activeTab === 'home' && (
+              <div>
+                <Hero
+                  onExploreClick={handleExploreAll}
+                />
+                <TrustBadges />
+                <FeaturedProducts
+                  products={products}
+                  onExploreAll={handleExploreAll}
+                />
+                <FeaturedCategories onSelectCategory={handleSelectCategory} />
+                <GreenMission onExploreClick={handleExploreAll} />
+                <RedefiningCare />
+                <UpgradeToBetterCare />
+                <Reviews />
+                <Blogs isSection={true} />
+              </div>
+            )}
 
-        {activeTab === 'catalog' && (
-          <div>
-            <Catalog
-              products={products}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              initialCategory={selectedCategory}
-            />
-          </div>
-        )}
+            {activeTab === 'catalog' && (
+              <div>
+                <Catalog
+                  products={products}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  initialCategory={selectedCategory}
+                />
+              </div>
+            )}
 
-        {activeTab === 'why-us' && (
-          <div>
-            <WhyUs onExploreClick={handleExploreAll} />
-          </div>
-        )}
+            {activeTab === 'why-us' && (
+              <div>
+                <WhyUs onExploreClick={handleExploreAll} />
+              </div>
+            )}
 
-        {activeTab === 'blogs' && (
-          <div>
-            <Blogs />
-          </div>
-        )}
+            {activeTab === 'blogs' && (
+              <div>
+                <Blogs />
+              </div>
+            )}
 
-        {activeTab === 'contact' && (
-          <div>
-            <ContactUs onExploreClick={handleExploreAll} />
-          </div>
+            {activeTab === 'contact' && (
+              <div>
+                <ContactUs onExploreClick={handleExploreAll} />
+              </div>
+            )}
+          </>
         )}
       </main>
 
@@ -187,7 +214,7 @@ function MainContent() {
       <ValuePillars />
 
       {/* Footer */}
-      <Footer onNavigate={setActiveTab} />
+      <Footer onNavigate={handleTabChange} />
 
       {/* Modals & Overlays */}
       <AuthModal
@@ -195,10 +222,9 @@ function MainContent() {
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
       />
-      <ProductDetailModal />
       <CartDrawer />
       <CheckoutModal />
-      <OrderSuccessModal onContinueShopping={() => setActiveTab('catalog')} />
+      <OrderSuccessModal onContinueShopping={() => handleTabChange('catalog')} />
     </div>
   );
 }

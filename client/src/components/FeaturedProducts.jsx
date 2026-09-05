@@ -252,19 +252,7 @@ export const FeaturedProducts = ({ onExploreAll }) => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedProduct({
-                          _id: product._id,
-                          name: product.name,
-                          category: product.category,
-                          image: product.image,
-                          price: displayPrice,
-                          tagline: product.tagline,
-                          description: product.description,
-                          ply: product.ply,
-                          variants: product.variants?.length
-                            ? product.variants
-                            : [{ size: displaySize, price: displayPrice }],
-                        });
+                        setSelectedProduct(product);
                       }}
                       className="p-2 rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
                       title="Quick View Details"

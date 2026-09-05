@@ -336,11 +336,13 @@ export const FeaturedCategories = ({ onSelectCategory }) => {
                         name: item.name,
                         category: item.category,
                         image: item.image,
+                        images: [item.image],
                         price: item.price,
+                        mrp: item.originalPrice,
                         tagline: item.subtitle,
-                        description: item.name,
-                        ply: '2-Ply / 3-Ply',
-                        variants: [{ size: item.size, price: item.price }],
+                        description: `${item.name} - Ultra-soft, highly absorbent 100% virgin pulp tissues crafted for superior comfort and everyday hygiene.`,
+                        ply: '2-Ply Ultra Soft',
+                        variants: [{ size: item.size, price: item.price, mrp: item.originalPrice }],
                       })
                     }
                     className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors cursor-pointer line-clamp-1"
