@@ -154,19 +154,47 @@ router.post("/products", protectAdmin, async (req, res) => {
     }
 
     // Process images array
-    const imageList = Array.isArray(images) && images.length > 0 
-      ? images.filter(Boolean) 
-      : (image ? [image] : ["https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80"]);
+    let imageList = [];
+    if (Array.isArray(images) && images.length > 0) {
+      imageList = images.map((img) => (typeof img === 'string' ? img.trim() : img)).filter(Boolean);
+    } else if (typeof images === 'string' && images.trim()) {
+      try {
+        const parsed = JSON.parse(images);
+        imageList = Array.isArray(parsed) ? parsed : [images.trim()];
+      } catch (e) {
+        imageList = images.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    } else if (image) {
+      imageList = [image.trim()];
+    }
+
+    if (image && typeof image === 'string' && image.trim() && !imageList.includes(image.trim())) {
+      imageList.unshift(image.trim());
+    }
+
+    if (imageList.length === 0) {
+      imageList = ["https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80"];
+    }
     
     // Process videos array
-    const videoList = Array.isArray(videos) ? videos.filter(Boolean) : [];
+    let videoList = [];
+    if (Array.isArray(videos)) {
+      videoList = videos.map((v) => (typeof v === 'string' ? v.trim() : v)).filter(Boolean);
+    } else if (typeof videos === 'string' && videos.trim()) {
+      try {
+        const parsed = JSON.parse(videos);
+        videoList = Array.isArray(parsed) ? parsed : [videos.trim()];
+      } catch (e) {
+        videoList = videos.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    }
 
     const newProduct = new Product({
       name: name.trim(),
       category: category.trim(),
       price: Number(price),
       mrp: mrp ? Number(mrp) : 0,
-      image: imageList[0] || image || "https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80",
+      image: imageList[0] || (image ? image.trim() : "https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80"),
       images: imageList,
       videos: videoList,
       pullsCount: pullsCount || "",
@@ -204,10 +232,46 @@ router.put("/products/:id", protectAdmin, async (req, res) => {
     if (updateData.mrp !== undefined) updateData.mrp = Number(updateData.mrp);
     if (updateData.stock !== undefined) updateData.stock = Number(updateData.stock);
 
+    // Process images array for update
+    let imageList = [];
     if (Array.isArray(updateData.images) && updateData.images.length > 0) {
-      updateData.image = updateData.images[0];
-    } else if (updateData.image && (!updateData.images || updateData.images.length === 0)) {
-      updateData.images = [updateData.image];
+      imageList = updateData.images.map((img) => (typeof img === 'string' ? img.trim() : img)).filter(Boolean);
+    } else if (typeof updateData.images === 'string' && updateData.images.trim()) {
+      try {
+        const parsed = JSON.parse(updateData.images);
+        imageList = Array.isArray(parsed) ? parsed : [updateData.images.trim()];
+      } catch (e) {
+        imageList = updateData.images.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    } else if (updateData.image) {
+      imageList = [updateData.image.trim()];
+    }
+
+    if (updateData.image && typeof updateData.image === 'string' && updateData.image.trim() && !imageList.includes(updateData.image.trim())) {
+      imageList.unshift(updateData.image.trim());
+    }
+
+    if (imageList.length > 0) {
+      updateData.images = imageList;
+      if (!updateData.image) {
+        updateData.image = imageList[0];
+      }
+    }
+
+    // Process videos array for update
+    if (updateData.videos !== undefined) {
+      let videoList = [];
+      if (Array.isArray(updateData.videos)) {
+        videoList = updateData.videos.map((v) => (typeof v === 'string' ? v.trim() : v)).filter(Boolean);
+      } else if (typeof updateData.videos === 'string' && updateData.videos.trim()) {
+        try {
+          const parsed = JSON.parse(updateData.videos);
+          videoList = Array.isArray(parsed) ? parsed : [updateData.videos.trim()];
+        } catch (e) {
+          videoList = updateData.videos.split(',').map((s) => s.trim()).filter(Boolean);
+        }
+      }
+      updateData.videos = videoList;
     }
 
     const updated = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });

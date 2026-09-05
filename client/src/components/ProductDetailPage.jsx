@@ -35,10 +35,54 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
   const [reviewForm, setReviewForm] = useState({ name: '', rating: 5, comment: '' });
   const [reviewsList, setReviewsList] = useState([]);
 
-  // Collect all images & media
-  const images = Array.isArray(product?.images) && product.images.length > 0
-    ? product.images
-    : (product?.image ? [product.image] : ['/redefine-tissue-box.webp']);
+  // Collect all images & media safely
+  const getProductImages = () => {
+    if (!product) return ['/redefine-tissue-box.webp'];
+    const collected = [];
+
+    if (Array.isArray(product.images)) {
+      product.images.forEach((img) => {
+        if (typeof img === 'string' && img.trim() && !collected.includes(img.trim())) {
+          collected.push(img.trim());
+        }
+      });
+    } else if (typeof product.images === 'string' && product.images.trim()) {
+      try {
+        const parsed = JSON.parse(product.images);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((img) => {
+            if (typeof img === 'string' && img.trim() && !collected.includes(img.trim())) {
+              collected.push(img.trim());
+            }
+          });
+        }
+      } catch (e) {
+        product.images.split(',').forEach((img) => {
+          if (img.trim() && !collected.includes(img.trim())) {
+            collected.push(img.trim());
+          }
+        });
+      }
+    }
+
+    if (product.image && typeof product.image === 'string' && product.image.trim()) {
+      const trimmed = product.image.trim();
+      if (!collected.includes(trimmed)) {
+        collected.unshift(trimmed);
+      }
+    }
+
+    if (product.secondaryImage && typeof product.secondaryImage === 'string' && product.secondaryImage.trim()) {
+      const trimmed = product.secondaryImage.trim();
+      if (!collected.includes(trimmed)) {
+        collected.push(trimmed);
+      }
+    }
+
+    return collected.length > 0 ? collected : ['/redefine-tissue-box.webp'];
+  };
+
+  const images = getProductImages();
 
   // Reset states when product changes
   useEffect(() => {

@@ -109,6 +109,8 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     setUploadingMedia(true);
     setUploadProgressText(`Uploading ${files.length} ${type}(s) to Cloudinary...`);
 
+    const uploadedUrls = [];
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const formData = new FormData();
@@ -125,26 +127,31 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
         const data = await res.json();
 
         if (res.ok && data.url) {
-          if (type === 'video') {
-            setProductForm((prev) => ({
-              ...prev,
-              videos: [...(prev.videos || []), data.url],
-            }));
-          } else {
-            setProductForm((prev) => {
-              const newImages = [...(prev.images || []), data.url];
-              return {
-                ...prev,
-                image: prev.image || data.url, // Set first image as main if empty
-                images: newImages,
-              };
-            });
-          }
+          uploadedUrls.push(data.url);
         } else {
           alert(`Upload error for ${file.name}: ` + (data.error || 'Upload failed'));
         }
       } catch (err) {
         alert(`Error uploading ${file.name}: ` + err.message);
+      }
+    }
+
+    if (uploadedUrls.length > 0) {
+      if (type === 'video') {
+        setProductForm((prev) => ({
+          ...prev,
+          videos: [...(prev.videos || []), ...uploadedUrls],
+        }));
+      } else {
+        setProductForm((prev) => {
+          const combined = [...(prev.images || []), ...uploadedUrls];
+          const unique = Array.from(new Set(combined.filter(Boolean)));
+          return {
+            ...prev,
+            image: prev.image || unique[0] || '',
+            images: unique,
+          };
+        });
       }
     }
 
@@ -154,23 +161,26 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     if (e.target) e.target.value = '';
   };
 
-  // Add Direct Media URL
+  // Add Direct Media URL (supports single or comma/newline/space-separated multiple URLs)
   const handleAddMediaUrl = () => {
     if (!mediaUrlInput.trim()) return;
-    const url = mediaUrlInput.trim();
+    const rawInput = mediaUrlInput.trim();
+    const urls = rawInput.split(/[\n,\s]+/).map((u) => u.trim()).filter(Boolean);
+    if (urls.length === 0) return;
 
     if (mediaTypeInput === 'video') {
       setProductForm((prev) => ({
         ...prev,
-        videos: [...(prev.videos || []), url],
+        videos: [...(prev.videos || []), ...urls],
       }));
     } else {
       setProductForm((prev) => {
-        const newImages = [...(prev.images || []), url];
+        const combined = [...(prev.images || []), ...urls];
+        const unique = Array.from(new Set(combined.filter(Boolean)));
         return {
           ...prev,
-          image: prev.image || url,
-          images: newImages,
+          image: prev.image || unique[0] || '',
+          images: unique,
         };
       });
     }
@@ -386,11 +396,20 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       Authorization: `Bearer ${token}`,
     };
 
-    // Ensure main image is set
-    const finalImage = productForm.image || (productForm.images && productForm.images[0]) || '';
+    // Ensure all images are collected and valid
+    let finalImages = Array.isArray(productForm.images) ? [...productForm.images] : [];
+    if (productForm.image && !finalImages.includes(productForm.image)) {
+      finalImages.unshift(productForm.image);
+    }
+    finalImages = finalImages.filter(Boolean);
+
+    const finalImage = productForm.image || finalImages[0] || 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80';
+
     const payload = {
       ...productForm,
       image: finalImage,
+      images: finalImages.length > 0 ? finalImages : [finalImage],
+      videos: Array.isArray(productForm.videos) ? productForm.videos.filter(Boolean) : [],
       price: Number(productForm.price),
       mrp: Number(productForm.mrp || 0),
       stock: Number(productForm.stock || 0),
@@ -460,14 +479,45 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
   // Open Edit Modal
   const openEditModal = (product) => {
     setEditingProduct(product);
+
+    // Extract all images safely
+    let extractedImages = [];
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      extractedImages = product.images.filter(Boolean);
+    } else if (typeof product.images === 'string' && product.images.trim()) {
+      try {
+        const parsed = JSON.parse(product.images);
+        extractedImages = Array.isArray(parsed) ? parsed : [product.images.trim()];
+      } catch (e) {
+        extractedImages = product.images.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    }
+
+    if (product.image && !extractedImages.includes(product.image)) {
+      extractedImages.unshift(product.image);
+    }
+
+    // Extract videos safely
+    let extractedVideos = [];
+    if (Array.isArray(product.videos)) {
+      extractedVideos = product.videos.filter(Boolean);
+    } else if (typeof product.videos === 'string' && product.videos.trim()) {
+      try {
+        const parsed = JSON.parse(product.videos);
+        extractedVideos = Array.isArray(parsed) ? parsed : [product.videos.trim()];
+      } catch (e) {
+        extractedVideos = product.videos.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    }
+
     setProductForm({
       name: product.name,
       category: product.category,
       price: product.price,
       mrp: product.mrp || product.originalPrice || 0,
-      image: product.image,
-      images: Array.isArray(product.images) && product.images.length > 0 ? product.images : (product.image ? [product.image] : []),
-      videos: Array.isArray(product.videos) ? product.videos : [],
+      image: product.image || extractedImages[0] || '',
+      images: extractedImages,
+      videos: extractedVideos,
       pullsCount: product.pullsCount || '',
       tagline: product.tagline || '',
       description: product.description || '',
