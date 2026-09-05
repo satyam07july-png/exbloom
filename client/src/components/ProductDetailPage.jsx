@@ -35,11 +35,37 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
   const [reviewForm, setReviewForm] = useState({ name: '', rating: 5, comment: '' });
   const [reviewsList, setReviewsList] = useState([]);
 
+  // Category-specific perspective fallback images to ensure rich multi-angle carousel
+  const getCategoryAngles = (cat = '') => {
+    const c = cat.toLowerCase();
+    if (c.includes('kitchen')) {
+      return [
+        'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1616627547584-bf28cee262db?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80',
+      ];
+    }
+    if (c.includes('toilet') || c.includes('bath')) {
+      return [
+        'https://images.unsplash.com/photo-1584556812952-905ffd0c611a?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80',
+      ];
+    }
+    // Default / Face tissue / Cube box
+    return [
+      'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80',
+    ];
+  };
+
   // Collect all images & media safely
   const getProductImages = () => {
     if (!product) return ['/redefine-tissue-box.webp'];
     const collected = [];
 
+    // 1. Process images array
     if (Array.isArray(product.images)) {
       product.images.forEach((img) => {
         if (typeof img === 'string' && img.trim() && !collected.includes(img.trim())) {
@@ -65,6 +91,7 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
       }
     }
 
+    // 2. Primary image
     if (product.image && typeof product.image === 'string' && product.image.trim()) {
       const trimmed = product.image.trim();
       if (!collected.includes(trimmed)) {
@@ -72,6 +99,7 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
       }
     }
 
+    // 3. Secondary image
     if (product.secondaryImage && typeof product.secondaryImage === 'string' && product.secondaryImage.trim()) {
       const trimmed = product.secondaryImage.trim();
       if (!collected.includes(trimmed)) {
@@ -79,10 +107,21 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
       }
     }
 
+    // 4. If fewer than 2 images exist, add complementary angle views so carousel is always full & rich
+    if (collected.length < 2) {
+      const angles = getCategoryAngles(product.category || '');
+      angles.forEach((ang) => {
+        if (!collected.includes(ang)) {
+          collected.push(ang);
+        }
+      });
+    }
+
     return collected.length > 0 ? collected : ['/redefine-tissue-box.webp'];
   };
 
   const images = getProductImages();
+  const videos = Array.isArray(product?.videos) ? product.videos.filter(Boolean) : [];
 
   // Reset states when product changes
   useEffect(() => {
@@ -98,6 +137,17 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [product]);
+
+  // Keyboard navigation for carousel
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') handlePrevImage();
+      if (e.key === 'ArrowRight') handleNextImage();
+      if (e.key === 'Escape' && isLightboxOpen) setIsLightboxOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [images.length, isLightboxOpen]);
 
   if (!product) return null;
 
@@ -228,33 +278,37 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           
-          {/* ── LEFT COLUMN: VERTICAL THUMBNAIL STRIP + MAIN IMAGE VIEWER ── */}
+          {/* ── LEFT COLUMN: VERTICAL THUMBNAIL STRIP + INTERACTIVE CAROUSEL ── */}
           <div className="lg:col-span-6 flex flex-col sm:flex-row gap-4 items-start">
             
-            {/* Vertical Thumbnails Strip (Left) */}
+            {/* Vertical Thumbnails Strip (Desktop Left Rail) */}
             {images.length > 1 && (
               <div className="hidden sm:flex flex-col items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={handlePrevImage}
-                  className="p-1 text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-emerald-800 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                  title="Previous photo"
                 >
                   <ChevronUp className="w-4 h-4" />
                 </button>
 
-                <div className="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto scrollbar-none py-1">
+                <div className="flex flex-col gap-2.5 max-h-[460px] overflow-y-auto scrollbar-none py-1">
                   {images.map((imgUrl, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => setActiveMediaIndex(idx)}
-                      className={`relative w-18 h-18 rounded-xl overflow-hidden border-2 transition-all cursor-pointer bg-slate-50 shrink-0 ${
+                      className={`relative w-18 h-18 rounded-xl overflow-hidden border-2 transition-all cursor-pointer bg-slate-50 shrink-0 group ${
                         activeMediaIndex === idx
-                          ? 'border-emerald-700 shadow-sm scale-102'
-                          : 'border-slate-200 opacity-70 hover:opacity-100'
+                          ? 'border-emerald-700 shadow-md ring-2 ring-emerald-600/30 scale-102'
+                          : 'border-slate-200 opacity-60 hover:opacity-100 hover:border-slate-400'
                       }`}
                     >
-                      <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[8px] font-bold px-1 rounded">
+                        {idx + 1}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -262,81 +316,138 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
                 <button
                   type="button"
                   onClick={handleNextImage}
-                  className="p-1 text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-emerald-800 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                  title="Next photo"
                 >
                   <ChevronDown className="w-4 h-4" />
                 </button>
               </div>
             )}
 
-            {/* Main Image Container */}
-            <div className="relative flex-1 w-full aspect-square bg-slate-50 rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs flex items-center justify-center group">
-              
-              {/* Discount Percentage Badge (Top-Right) */}
-              {hasDiscount && (
-                <div className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-xs font-black shadow-md tracking-wider">
-                  -{discountPercent}%
+            {/* Main Interactive Carousel Showcase Box */}
+            <div className="flex-1 w-full flex flex-col gap-3">
+              <div className="relative w-full aspect-square bg-slate-50 rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs flex items-center justify-center group select-none">
+                
+                {/* Discount Percentage Badge (Top-Right) */}
+                {hasDiscount && (
+                  <div className="absolute top-4 right-4 z-20 w-12 h-12 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-xs font-black shadow-md tracking-wider animate-scale-in">
+                    -{discountPercent}%
+                  </div>
+                )}
+
+                {/* Photo Counter Badge (Top-Left) */}
+                <div className="absolute top-4 left-4 z-20 bg-slate-900/70 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1.5">
+                  <span>📷 {activeMediaIndex + 1} / {images.length}</span>
+                </div>
+
+                {/* Main Product Image with Smooth Transition */}
+                <img
+                  key={activeMediaIndex}
+                  src={images[activeMediaIndex] || product.image || '/redefine-tissue-box.webp'}
+                  alt={product.name}
+                  className="w-full h-full object-cover object-center transition-all duration-300 group-hover:scale-103 cursor-zoom-in animate-fade-in"
+                  onClick={() => setIsLightboxOpen(true)}
+                />
+
+                {/* Left Carousel Navigation Button */}
+                {images.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrevImage();
+                    }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/95 hover:bg-white text-slate-800 flex items-center justify-center shadow-lg border border-slate-200/80 transition-all hover:scale-110 active:scale-95 cursor-pointer z-20"
+                    title="Previous Slide"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-slate-700" />
+                  </button>
+                )}
+
+                {/* Right Carousel Navigation Button */}
+                {images.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNextImage();
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/95 hover:bg-white text-slate-800 flex items-center justify-center shadow-lg border border-slate-200/80 transition-all hover:scale-110 active:scale-95 cursor-pointer z-20"
+                    title="Next Slide"
+                  >
+                    <ChevronRight className="w-5 h-5 text-slate-700" />
+                  </button>
+                )}
+
+                {/* Carousel Bottom Pagination Dots (● ○ ○ ○) */}
+                {images.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full shadow-md">
+                    {images.map((_, dotIdx) => (
+                      <button
+                        key={dotIdx}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMediaIndex(dotIdx);
+                        }}
+                        className={`transition-all duration-300 rounded-full cursor-pointer ${
+                          activeMediaIndex === dotIdx
+                            ? 'w-6 h-2 bg-emerald-400'
+                            : 'w-2 h-2 bg-white/60 hover:bg-white'
+                        }`}
+                        title={`Go to photo ${dotIdx + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Fullscreen / Lightbox Zoom Button (Bottom-Right) */}
+                <button
+                  type="button"
+                  onClick={() => setIsLightboxOpen(true)}
+                  className="absolute bottom-4 right-4 z-20 p-2.5 rounded-xl bg-white/90 hover:bg-white text-slate-800 shadow-md border border-slate-200 transition-all hover:scale-105 cursor-pointer"
+                  title="View Fullscreen Lightbox"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Mobile / Tablet Horizontal Thumbnails Carousel */}
+              {images.length > 1 && (
+                <div className="flex sm:hidden items-center gap-2 overflow-x-auto w-full pb-1 scrollbar-none">
+                  {images.map((imgUrl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveMediaIndex(idx)}
+                      className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
+                        activeMediaIndex === idx
+                          ? 'border-emerald-700 shadow-sm ring-2 ring-emerald-600/30'
+                          : 'border-slate-200 opacity-60'
+                      }`}
+                    >
+                      <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
                 </div>
               )}
 
-              {/* Main Product Image */}
-              <img
-                src={images[activeMediaIndex] || product.image || '/redefine-tissue-box.webp'}
-                alt={product.name}
-                className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-103 cursor-zoom-in"
-                onClick={() => setIsLightboxOpen(true)}
-              />
-
-              {/* Left Navigation Arrow */}
-              {images.length > 1 && (
+              {/* More Views / Angles Ribbon */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
+                  <span>{images.length} High-Resolution Photo Angles Available</span>
+                </div>
                 <button
                   type="button"
-                  onClick={handlePrevImage}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  onClick={() => setIsLightboxOpen(true)}
+                  className="text-xs font-black text-emerald-800 hover:text-emerald-900 underline cursor-pointer"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  View All Fullscreen
                 </button>
-              )}
-
-              {/* Right Navigation Arrow */}
-              {images.length > 1 && (
-                <button
-                  type="button"
-                  onClick={handleNextImage}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              )}
-
-              {/* Fullscreen / Zoom Button (Bottom-Left) */}
-              <button
-                type="button"
-                onClick={() => setIsLightboxOpen(true)}
-                className="absolute bottom-4 left-4 p-2.5 rounded-xl bg-white/90 hover:bg-white text-slate-800 shadow-md border border-slate-200 transition-all hover:scale-105 cursor-pointer"
-                title="View Fullscreen"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Mobile horizontal thumbnails row */}
-            {images.length > 1 && (
-              <div className="flex sm:hidden items-center gap-2 overflow-x-auto w-full pb-2">
-                {images.map((imgUrl, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setActiveMediaIndex(idx)}
-                    className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
-                      activeMediaIndex === idx ? 'border-emerald-700' : 'border-slate-200 opacity-60'
-                    }`}
-                  >
-                    <img src={imgUrl} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
               </div>
-            )}
+
+            </div>
 
           </div>
 
@@ -770,23 +881,81 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
       </button>
 
       {/* =========================================================================
-          6. FULLSCREEN IMAGE LIGHTBOX MODAL
+          6. FULLSCREEN IMAGE LIGHTBOX MODAL WITH FULL CAROUSEL
       ========================================================================= */}
       {isLightboxOpen && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <button
-            type="button"
-            onClick={() => setIsLightboxOpen(false)}
-            className="absolute top-5 right-5 p-2 rounded-full bg-white/20 hover:bg-white text-white hover:text-slate-900 transition-colors cursor-pointer"
-          >
-            <X className="w-6 h-6" />
-          </button>
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-6 select-none animate-fade-in">
+          {/* Top Bar */}
+          <div className="w-full flex items-center justify-between text-white py-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-200">
+                {product.name}
+              </span>
+              <span className="text-xs bg-white/20 px-2.5 py-0.5 rounded-full font-semibold text-emerald-300">
+                {activeMediaIndex + 1} / {images.length}
+              </span>
+            </div>
 
-          <img
-            src={images[activeMediaIndex] || product.image}
-            alt={product.name}
-            className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl animate-scale-in"
-          />
+            <button
+              type="button"
+              onClick={() => setIsLightboxOpen(false)}
+              className="p-2.5 rounded-full bg-white/20 hover:bg-white text-white hover:text-slate-900 transition-colors cursor-pointer"
+              title="Close (ESC)"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Main Lightbox Image View with Carousel Nav */}
+          <div className="relative flex-1 w-full flex items-center justify-center py-4">
+            {images.length > 1 && (
+              <button
+                type="button"
+                onClick={handlePrevImage}
+                className="absolute left-2 sm:left-6 p-3 rounded-full bg-black/50 hover:bg-white text-white hover:text-black transition-all cursor-pointer z-10"
+                title="Previous photo"
+              >
+                <ChevronLeft className="w-7 h-7" />
+              </button>
+            )}
+
+            <img
+              src={images[activeMediaIndex] || product.image}
+              alt={product.name}
+              className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl animate-scale-in"
+            />
+
+            {images.length > 1 && (
+              <button
+                type="button"
+                onClick={handleNextImage}
+                className="absolute right-2 sm:right-6 p-3 rounded-full bg-black/50 hover:bg-white text-white hover:text-black transition-all cursor-pointer z-10"
+                title="Next photo"
+              >
+                <ChevronRight className="w-7 h-7" />
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Thumbnails Rail */}
+          {images.length > 1 && (
+            <div className="flex items-center justify-center gap-2 overflow-x-auto max-w-xl py-2 scrollbar-none">
+              {images.map((imgUrl, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setActiveMediaIndex(idx)}
+                  className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
+                    activeMediaIndex === idx
+                      ? 'border-emerald-500 scale-105 shadow-lg'
+                      : 'border-white/30 opacity-50 hover:opacity-100'
+                  }`}
+                >
+                  <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -389,8 +389,11 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
   };
 
   // Handle Save Product (Add or Edit)
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
   const handleSaveProduct = async (e) => {
     e.preventDefault();
+    setIsSavingProduct(true);
+
     const authHeaders = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
@@ -405,8 +408,13 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
 
     const finalImage = productForm.image || finalImages[0] || 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80';
 
+    const cleanForm = { ...productForm };
+    delete cleanForm._id;
+    delete cleanForm.createdAt;
+    delete cleanForm.updatedAt;
+
     const payload = {
-      ...productForm,
+      ...cleanForm,
       image: finalImage,
       images: finalImages.length > 0 ? finalImages : [finalImage],
       videos: Array.isArray(productForm.videos) ? productForm.videos.filter(Boolean) : [],
@@ -415,43 +423,57 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       stock: Number(productForm.stock || 0),
     };
 
-    if (editingProduct) {
-      const updatedList = products.map((p) =>
-        p._id === editingProduct._id ? { ...p, ...payload } : p
-      );
-      setProducts(updatedList);
-      if (token) {
-        try {
-          const res = await fetch(`${BASE_URL}/api/admin/products/${editingProduct._id}`, {
+    try {
+      if (editingProduct) {
+        const targetId = editingProduct._id;
+        if (token) {
+          const res = await fetch(`${BASE_URL}/api/admin/products/${targetId}`, {
             method: 'PUT',
             headers: authHeaders,
             body: JSON.stringify(payload),
           });
-          if (res.ok) {
+          const data = await res.json();
+          if (res.ok && data.success) {
+            const savedProduct = data.product || { ...payload, _id: targetId };
+            setProducts((prev) => prev.map((p) => (p._id === targetId ? savedProduct : p)));
+            alert(`✅ "${payload.name}" updated successfully with ${payload.images.length} images saved!`);
             fetchAdminData();
+          } else {
+            alert('⚠️ Update warning: ' + (data.error || 'Server could not update product.'));
           }
-        } catch (e) {}
-      }
-    } else {
-      const tempId = `prod_${Date.now()}`;
-      setProducts([{ ...payload, _id: tempId }, ...products]);
-      if (token) {
-        try {
+        } else {
+          setProducts((prev) => prev.map((p) => (p._id === targetId ? { ...p, ...payload } : p)));
+        }
+      } else {
+        const tempId = `prod_${Date.now()}`;
+        if (token) {
           const res = await fetch(`${BASE_URL}/api/admin/products`, {
             method: 'POST',
             headers: authHeaders,
             body: JSON.stringify(payload),
           });
-          if (res.ok) {
+          const data = await res.json();
+          if (res.ok && data.success) {
+            const savedProduct = data.product || { ...payload, _id: tempId };
+            setProducts((prev) => [savedProduct, ...prev.filter((p) => p._id !== tempId)]);
+            alert(`✅ "${payload.name}" created successfully with ${payload.images.length} images saved!`);
             fetchAdminData();
+          } else {
+            alert('⚠️ Create warning: ' + (data.error || 'Server could not save product.'));
           }
-        } catch (e) {}
+        } else {
+          setProducts((prev) => [{ ...payload, _id: tempId }, ...prev]);
+        }
       }
-    }
 
-    setIsAddModalOpen(false);
-    setEditingProduct(null);
-    setProductForm(defaultProductForm);
+      setIsAddModalOpen(false);
+      setEditingProduct(null);
+      setProductForm(defaultProductForm);
+    } catch (err) {
+      alert('Network error while saving product: ' + err.message);
+    } finally {
+      setIsSavingProduct(false);
+    }
   };
 
   // Delete Product

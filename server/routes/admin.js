@@ -227,7 +227,12 @@ router.post("/products", protectAdmin, async (req, res) => {
 
 router.put("/products/:id", protectAdmin, async (req, res) => {
   try {
+    const mongoose = require("mongoose");
     const updateData = { ...req.body };
+    delete updateData._id;
+    delete updateData.createdAt;
+    delete updateData.updatedAt;
+
     if (updateData.price !== undefined) updateData.price = Number(updateData.price);
     if (updateData.mrp !== undefined) updateData.mrp = Number(updateData.mrp);
     if (updateData.stock !== undefined) updateData.stock = Number(updateData.stock);
@@ -274,11 +279,24 @@ router.put("/products/:id", protectAdmin, async (req, res) => {
       updateData.videos = videoList;
     }
 
-    const updated = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
-    if (!updated) {
-      return res.status(404).json({ error: "Product not found" });
+    let updated = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      updated = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
     }
-    res.json({ success: true, product: updated });
+
+    // If not found by ObjectId, try finding by name or create new in MongoDB
+    if (!updated && updateData.name) {
+      updated = await Product.findOneAndUpdate({ name: updateData.name.trim() }, updateData, { new: true });
+      if (!updated) {
+        const newProduct = new Product({ ...updateData, name: updateData.name.trim() });
+        updated = await newProduct.save();
+      }
+    }
+
+    if (!updated) {
+      return res.status(404).json({ error: "Product not found and could not be updated" });
+    }
+    return res.json({ success: true, product: updated });
   } catch (err) {
     console.error("Update product error:", err);
     res.status(500).json({ error: `Failed to update product: ${err.message}` });
