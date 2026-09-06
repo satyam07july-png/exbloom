@@ -169,7 +169,7 @@ function MainContent() {
                   products={products}
                   onExploreAll={handleExploreAll}
                 />
-                <FeaturedCategories onSelectCategory={handleSelectCategory} />
+                <FeaturedCategories products={products} onSelectCategory={handleSelectCategory} />
                 <GreenMission onExploreClick={handleExploreAll} />
                 <RedefiningCare />
                 <UpgradeToBetterCare />

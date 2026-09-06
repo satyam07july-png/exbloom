@@ -250,23 +250,89 @@ const categoryData = {
   },
 };
 
-export const FeaturedCategories = ({ onSelectCategory }) => {
+export const FeaturedCategories = ({ onSelectCategory, products = [] }) => {
   const [activeKey, setActiveKey] = useState('facial-100');
   const { addToCart, setSelectedProduct } = useCart();
 
-  const currentCategory = categoryData[activeKey];
+  // Helper to map dynamic products to category tabs
+  const getCategoryItems = (key) => {
+    const defaultItems = categoryData[key]?.items || [];
+    if (!products || products.length === 0) return defaultItems;
+
+    let matchingDynamic = [];
+    if (key === 'facial-100' || key === 'facial-200') {
+      matchingDynamic = products.filter((p) => {
+        const cat = (p.category || '').toLowerCase();
+        return cat.includes('face') || cat.includes('tissue') || cat.includes('box');
+      });
+    } else if (key === 'kitchen-rolls') {
+      matchingDynamic = products.filter((p) => {
+        const cat = (p.category || '').toLowerCase();
+        return cat.includes('kitchen') || cat.includes('towel');
+      });
+    } else if (key === 'toilet-rolls') {
+      matchingDynamic = products.filter((p) => {
+        const cat = (p.category || '').toLowerCase();
+        return cat.includes('toilet') || cat.includes('bath') || cat.includes('roll');
+      });
+    } else if (key === 'combos') {
+      matchingDynamic = products.filter((p) => {
+        const cat = (p.category || '').toLowerCase();
+        return cat.includes('combo') || cat.includes('bundle') || cat.includes('pack');
+      });
+    }
+
+    if (matchingDynamic.length > 0) {
+      const formattedDynamic = matchingDynamic.map((p) => {
+        const firstVariant = p.variants?.[0];
+        const displayPrice = firstVariant?.price ?? p.price ?? 0;
+        const originalPrice = p.mrp || p.originalPrice || firstVariant?.mrp || (displayPrice * 1.3);
+        const hasDiscount = originalPrice > displayPrice;
+        const discountPercent = hasDiscount
+          ? `-${Math.round(((originalPrice - displayPrice) / originalPrice) * 100)}%`
+          : '-20%';
+
+        return {
+          id: p._id,
+          name: p.name,
+          subtitle: p.tagline || `${p.ply || '2-Ply'} • ${p.pullsCount || 'Ultra Soft'}`,
+          originalPrice: Math.round(originalPrice),
+          price: displayPrice,
+          discount: discountPercent,
+          image: p.image || (Array.isArray(p.images) && p.images[0]) || '/redefine-tissue-box.webp',
+          images: Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.image ? [p.image] : []),
+          category: p.category,
+          size: firstVariant?.size || 'Standard Pack',
+          rawProduct: p,
+        };
+      });
+
+      // Combine dynamic products first, then fill with default items up to 4
+      const combined = [...formattedDynamic, ...defaultItems.filter(d => !formattedDynamic.some(f => f.name === d.name))];
+      return combined.slice(0, 4);
+    }
+
+    return defaultItems;
+  };
+
+  const currentCategoryLabel = categoryData[activeKey]?.label || 'FEATURED PRODUCTS';
+  const currentItems = getCategoryItems(activeKey);
 
   const handleAddToCart = (item) => {
-    addToCart(
-      {
-        _id: item.id,
-        name: item.name,
-        category: item.category,
-        image: item.image,
-        price: item.price,
-      },
-      { size: item.size, price: item.price }
-    );
+    if (item.rawProduct) {
+      addToCart(item.rawProduct, null, 1);
+    } else {
+      addToCart(
+        {
+          _id: item.id,
+          name: item.name,
+          category: item.category,
+          image: item.image,
+          price: item.price,
+        },
+        { size: item.size, price: item.price }
+      );
+    }
   };
 
   return (
@@ -306,15 +372,35 @@ export const FeaturedCategories = ({ onSelectCategory }) => {
 
         {/* ================= 3. 4-PRODUCT CARDS GRID MATCHING REFERENCE IMAGE ================= */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
-          {currentCategory.items.map((item) => (
+          {currentItems.map((item) => (
             <div
               key={item.id}
               className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all duration-300 group"
             >
               <div>
                 {/* Product Image Container */}
-                <div className="relative w-full aspect-square bg-slate-50 overflow-hidden border-b border-slate-100 flex items-center justify-center p-2">
-                  
+                <div 
+                  onClick={() => {
+                    if (item.rawProduct) {
+                      setSelectedProduct(item.rawProduct);
+                    } else {
+                      setSelectedProduct({
+                        _id: item.id,
+                        name: item.name,
+                        category: item.category,
+                        image: item.image,
+                        images: item.images || [item.image],
+                        price: item.price,
+                        mrp: item.originalPrice,
+                        tagline: item.subtitle,
+                        description: `${item.name} - Ultra-soft, highly absorbent 100% virgin pulp tissues crafted for superior comfort and everyday hygiene.`,
+                        ply: '2-Ply Ultra Soft',
+                        variants: [{ size: item.size, price: item.price, mrp: item.originalPrice }],
+                      });
+                    }
+                  }}
+                  className="relative w-full aspect-square bg-slate-50 overflow-hidden border-b border-slate-100 flex items-center justify-center p-2 cursor-pointer"
+                >
                   {/* Circular Discount Tag (-32%, -39%, -43%, -46%) */}
                   <div className="absolute top-3 left-3 z-10 w-11 h-11 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-xs font-bold shadow-md">
                     {item.discount}
@@ -330,21 +416,25 @@ export const FeaturedCategories = ({ onSelectCategory }) => {
                 {/* Card Text Content */}
                 <div className="p-4 text-center space-y-1.5">
                   <h3
-                    onClick={() =>
-                      setSelectedProduct({
-                        _id: item.id,
-                        name: item.name,
-                        category: item.category,
-                        image: item.image,
-                        images: [item.image],
-                        price: item.price,
-                        mrp: item.originalPrice,
-                        tagline: item.subtitle,
-                        description: `${item.name} - Ultra-soft, highly absorbent 100% virgin pulp tissues crafted for superior comfort and everyday hygiene.`,
-                        ply: '2-Ply Ultra Soft',
-                        variants: [{ size: item.size, price: item.price, mrp: item.originalPrice }],
-                      })
-                    }
+                    onClick={() => {
+                      if (item.rawProduct) {
+                        setSelectedProduct(item.rawProduct);
+                      } else {
+                        setSelectedProduct({
+                          _id: item.id,
+                          name: item.name,
+                          category: item.category,
+                          image: item.image,
+                          images: item.images || [item.image],
+                          price: item.price,
+                          mrp: item.originalPrice,
+                          tagline: item.subtitle,
+                          description: `${item.name} - Ultra-soft, highly absorbent 100% virgin pulp tissues crafted for superior comfort and everyday hygiene.`,
+                          ply: '2-Ply Ultra Soft',
+                          variants: [{ size: item.size, price: item.price, mrp: item.originalPrice }],
+                        });
+                      }
+                    }}
                     className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors cursor-pointer line-clamp-1"
                   >
                     {item.name}

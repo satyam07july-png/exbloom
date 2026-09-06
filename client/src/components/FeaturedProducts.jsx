@@ -3,23 +3,35 @@ import { ShoppingBag, Heart, Search, Shuffle, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import BASE_URL from '../utils/api';
 
-export const FeaturedProducts = ({ onExploreAll }) => {
+export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) => {
   const { addToCart, setSelectedProduct, showToast } = useCart();
   const [wishlist, setWishlist] = useState({});
   const [activeCardId, setActiveCardId] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState(propProducts);
+  const [loading, setLoading] = useState(propProducts.length === 0);
   const [error, setError] = useState(null);
+
+  // Sync when parent products change
+  useEffect(() => {
+    if (propProducts && propProducts.length > 0) {
+      setProducts(propProducts);
+      setLoading(false);
+    }
+  }, [propProducts]);
 
   // Fetch products from backend
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        setLoading(true);
+        if (propProducts.length === 0) {
+          setLoading(true);
+        }
         const res = await fetch(`${BASE_URL}/api/products`);
         if (!res.ok) throw new Error('Failed to fetch products');
         const data = await res.json();
-        setProducts(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setProducts(data);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -38,8 +50,8 @@ export const FeaturedProducts = ({ onExploreAll }) => {
     });
   };
 
-  const handleCardClick = (id) => {
-    setActiveCardId((prev) => (prev === id ? null : id));
+  const handleCardClick = (product) => {
+    setSelectedProduct(product);
   };
 
   const handleAddToCart = (product, e) => {
@@ -61,7 +73,7 @@ export const FeaturedProducts = ({ onExploreAll }) => {
   };
 
   // ── Loading State ──────────────────────────────────────────────────────
-  if (loading) {
+  if (loading && products.length === 0) {
     return (
       <section id="bestsellers-section" className="py-16 bg-white border-b border-slate-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -79,31 +91,6 @@ export const FeaturedProducts = ({ onExploreAll }) => {
     );
   }
 
-  // ── Empty / Error State ────────────────────────────────────────────────
-  if (error || products.length === 0) {
-    return (
-      <section id="bestsellers-section" className="py-16 bg-white border-b border-slate-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#1b4d3e] tracking-tight">
-              Our Bestsellers
-            </h2>
-            <div className="w-16 h-0.5 bg-[#1b4d3e]/30 mx-auto mt-3" />
-          </div>
-          <div className="flex flex-col items-center justify-center py-24 space-y-4 text-slate-500">
-            <ShoppingBag className="w-14 h-14 text-slate-300" />
-            <p className="text-lg font-semibold text-slate-600">
-              {error ? 'Products load nahi ho sake.' : 'Abhi koi product available nahi hai.'}
-            </p>
-            <p className="text-sm text-slate-400">
-              Admin portal se products add karein.
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   // ── Product Grid ───────────────────────────────────────────────────────
   return (
     <section id="bestsellers-section" className="py-16 bg-white border-b border-slate-200/70">
@@ -111,6 +98,9 @@ export const FeaturedProducts = ({ onExploreAll }) => {
 
         {/* Section Title */}
         <div className="text-center mb-12">
+          <span className="text-xs font-bold text-emerald-800 uppercase tracking-widest block mb-2">
+            ⭐ Top Rated &amp; Popular
+          </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#1b4d3e] tracking-tight">
             Our Bestsellers
           </h2>
@@ -134,12 +124,8 @@ export const FeaturedProducts = ({ onExploreAll }) => {
             return (
               <div
                 key={product._id}
-                onClick={() => handleCardClick(product._id)}
-                className={`bg-white rounded-2xl border transition-all duration-300 group cursor-pointer relative flex flex-col justify-between overflow-hidden ${
-                  isActive
-                    ? 'border-emerald-400 shadow-2xl z-20 scale-[1.03] ring-2 ring-emerald-300/60'
-                    : 'border-slate-200 shadow-2xs hover:shadow-xl hover:border-emerald-300 hover:scale-[1.02] hover:z-10'
-                }`}
+                onClick={() => setSelectedProduct(product)}
+                className="bg-white rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xl hover:border-emerald-400 hover:scale-[1.02] transition-all duration-300 group cursor-pointer relative flex flex-col justify-between overflow-hidden"
               >
                 <div>
                   {/* Image Container */}
@@ -152,23 +138,12 @@ export const FeaturedProducts = ({ onExploreAll }) => {
                       </div>
                     )}
 
-                    {/* Shuffle Icon */}
-                    <div
-                      className={`absolute bottom-3 right-3 z-10 p-1.5 rounded-full bg-white/90 text-slate-700 shadow-sm border border-slate-200 transition-all duration-300 ${
-                        isActive
-                          ? 'opacity-100 bg-emerald-100 text-emerald-800 rotate-180 scale-110'
-                          : 'opacity-0 group-hover:opacity-100 hover:text-emerald-800'
-                      }`}
-                    >
-                      <Shuffle className="w-3.5 h-3.5" />
-                    </div>
-
                     {/* Product Image */}
                     <img
                       src={
-                        isActive && (product.images?.[1] || product.secondaryImage)
-                          ? (product.images?.[1] || product.secondaryImage)
-                          : (product.image || product.images?.[0] || '/redefine-tissue-box.webp')
+                        product.image ||
+                        (Array.isArray(product.images) && product.images[0]) ||
+                        '/redefine-tissue-box.webp'
                       }
                       alt={product.name}
                       className="w-full h-full object-cover object-center group-hover:scale-104 transition-all duration-500 rounded-xl"
@@ -205,30 +180,18 @@ export const FeaturedProducts = ({ onExploreAll }) => {
                       </span>
                     </div>
 
-                    {/* Expandable Description */}
-                    <div
-                      className={`overflow-hidden transition-all duration-300 text-left ${
-                        isActive
-                          ? 'max-h-32 opacity-100 pt-2.5'
-                          : 'max-h-0 opacity-0 group-hover:max-h-32 group-hover:opacity-100 group-hover:pt-2.5'
-                      }`}
-                    >
-                      <p className="text-[11px] text-slate-600 leading-relaxed font-normal border-t border-slate-100 pt-2">
+                    {/* Short Description */}
+                    {product.description && (
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-normal line-clamp-2 pt-1 border-t border-slate-100">
                         {product.description}
                       </p>
-                    </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Bottom Action Bar */}
                 <div className="p-4 pt-0">
-                  <div
-                    className={`pt-3 border-t border-slate-100 flex items-center justify-between gap-2 transition-all duration-300 ${
-                      isActive
-                        ? 'opacity-100 transform-none'
-                        : 'opacity-0 sm:opacity-90 group-hover:opacity-100 transform sm:translate-y-0'
-                    }`}
-                  >
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     {/* Wishlist */}
                     <button
                       onClick={(e) => toggleWishlist(product._id, e)}
@@ -248,14 +211,14 @@ export const FeaturedProducts = ({ onExploreAll }) => {
                       ADD TO CART
                     </button>
 
-                    {/* Quick View */}
+                    {/* View Details */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedProduct(product);
                       }}
                       className="p-2 rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
-                      title="Quick View Details"
+                      title="View Full Product Page"
                     >
                       <Search className="w-4 h-4" />
                     </button>
@@ -266,6 +229,19 @@ export const FeaturedProducts = ({ onExploreAll }) => {
             );
           })}
         </div>
+
+        {/* Explore All Button */}
+        {onExploreAll && (
+          <div className="mt-12 text-center">
+            <button
+              onClick={onExploreAll}
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#1b4d3e] hover:bg-[#143c30] text-white text-xs font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+            >
+              <span>Explore All Nexbloom Range</span>
+              <span>→</span>
+            </button>
+          </div>
+        )}
 
       </div>
     </section>
