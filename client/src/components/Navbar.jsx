@@ -28,7 +28,7 @@ export const Navbar = ({
     { label: 'Home', id: 'home' },
     { label: 'Our Range', id: 'catalog' },
     { label: 'Why Nexbloom', id: 'why-us' },
-    { label: 'Blogs', id: 'blogs' },
+    { label: 'Upcoming', id: 'blogs' },
     { label: 'Contact Us', id: 'contact' },
   ];
 

@@ -93,10 +93,10 @@ export const Blogs = ({ isSection = false }) => {
     <section id="our-blog-section" className={`bg-white border-b border-slate-200/80 ${isSection ? 'py-16' : 'pt-24 pb-20'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* ================= 1. SECTION TITLE (Matching Screenshot) ================= */}
+        {/* ================= 1. SECTION TITLE ================= */}
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#1b4d3e] tracking-tight">
-            Our Blog
+            Upcoming
           </h2>
           <div className="w-16 h-0.5 bg-[#1b4d3e]/30 mx-auto mt-3" />
         </div>
