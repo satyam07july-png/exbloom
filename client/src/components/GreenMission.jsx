@@ -11,10 +11,10 @@ export const GreenMission = ({ onExploreClick }) => {
           
           {/* Left Column: Visual Gift Poster with Seeds & Living Plant Sprout */}
           <div className="lg:col-span-5 flex justify-center">
-            <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-md border border-slate-200/80 group hover:shadow-xl transition-all duration-300">
+            <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-md border border-slate-200/80 group hover:shadow-xl transition-all duration-300 bg-white">
               <img
-                src="/eco-story-poster.png"
-                alt="A Thoughtful Gift with Every Order - Free Seed Gifting"
+                src="/eco-story-poster.jpg"
+                alt="A Thoughtful Gift with Every Order - NexBloom Free Seed Gifting"
                 className="w-full h-auto object-cover object-center group-hover:scale-102 transition-transform duration-500"
               />
             </div>
