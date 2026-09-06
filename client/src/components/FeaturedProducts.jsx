@@ -200,9 +200,9 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
           <div className="w-16 h-0.5 bg-[#1b4d3e]/30 mx-auto mt-3" />
         </div>
 
-        {/* 4-Column Product Grid (Matching refrence.mp4) */}
+        {/* 4-Column Product Grid (1 row me 4 products, total 8 products) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
-          {products.map((product) => {
+          {products.slice(0, 8).map((product) => {
             const firstVariant = product.variants?.[0];
             const displayPrice = firstVariant?.price ?? product.price ?? 0;
             const originalPrice = product.mrp || product.originalPrice || firstVariant?.mrp || (displayPrice > 0 ? Math.round(displayPrice * 1.25) : 0);
