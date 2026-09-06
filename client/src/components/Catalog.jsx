@@ -71,32 +71,28 @@ export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory
       ========================================================================= */}
       <div className="space-y-6">
         
-        {/* POSTER 1 (Top Pure Visual Poster) */}
+        {/* POSTER 1 (Nexbloom Living Room Tissue Box Poster - 100% Non-cropped) */}
         <div 
-          onClick={() => setSelectedCategory('Kitchen Roll')}
-          className="relative w-full h-48 sm:h-72 md:h-96 rounded-3xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer group"
+          onClick={() => setSelectedCategory('Face Tissue')}
+          className="relative w-full max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer group bg-slate-50"
         >
           <img
-            src="https://images.unsplash.com/photo-1616627547584-bf28cee262db?auto=format&fit=crop&w=1800&q=85"
-            alt="Nexbloom Kitchen Rolls & Table Tissues Poster"
-            className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700"
+            src="/nexbloom-living-room-tissue.webp"
+            alt="NexBloom SilkTouch Premium Facial Tissue Box"
+            className="w-full h-auto object-contain object-center group-hover:scale-101 transition-transform duration-500 rounded-3xl"
           />
-          {/* Subtle natural overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent pointer-events-none" />
         </div>
 
-        {/* POSTER 2 (Bottom Pure Visual Poster) */}
+        {/* POSTER 2 (Nexbloom Paper Roll Poster - 100% Non-cropped) */}
         <div 
-          onClick={() => setSelectedCategory('Toilet Roll')}
-          className="relative w-full h-48 sm:h-72 md:h-96 rounded-3xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer group"
+          onClick={() => setSelectedCategory('Kitchen Roll')}
+          className="relative w-full max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer group bg-slate-50"
         >
           <img
-            src="https://images.unsplash.com/photo-1584556812952-905ffd0c611a?auto=format&fit=crop&w=1800&q=85"
-            alt="Nexbloom CloudSoft Toilet Rolls & Facial Tissues Poster"
-            className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700"
+            src="/nexbloom-kitchen-roll-banner.webp"
+            alt="Nexbloom Ultra-Absorb Paper Rolls & Kitchen Towels"
+            className="w-full h-auto object-contain object-center group-hover:scale-101 transition-transform duration-500 rounded-3xl"
           />
-          {/* Subtle natural overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent pointer-events-none" />
         </div>
 
       </div>
