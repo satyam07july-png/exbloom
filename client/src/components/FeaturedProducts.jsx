@@ -107,9 +107,9 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
           <div className="w-16 h-0.5 bg-[#1b4d3e]/30 mx-auto mt-3" />
         </div>
 
-        {/* 4-Column Product Grid (Matching Reference Screenshot) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
-          {products.map((product) => {
+        {/* 2-Column Centered Product Grid (Matching User Preference) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 max-w-2xl sm:max-w-3xl mx-auto gap-8 sm:gap-12 items-start">
+          {products.slice(0, 2).map((product) => {
             const firstVariant = product.variants?.[0];
             const displayPrice = firstVariant?.price ?? product.price ?? 0;
             const originalPrice = product.mrp || product.originalPrice || firstVariant?.mrp || (displayPrice > 0 ? Math.round(displayPrice * 1.25) : 0);
@@ -126,14 +126,18 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
             return (
               <div
                 key={product._id}
-                onClick={() => setSelectedProduct(product)}
-                className="group cursor-pointer flex flex-col items-center transition-all duration-300"
+                onClick={() => {
+                  const fullProduct = (propProducts && propProducts.find((p) => p._id === product._id)) || product;
+                  setSelectedProduct(fullProduct);
+                  window.scrollTo({ top: 0, behavior: 'instant' });
+                }}
+                className="group cursor-pointer flex flex-col items-center transition-all duration-300 hover:-translate-y-1"
               >
                 {/* Image Container with Top-Left Round Discount Badge */}
-                <div className="relative w-full aspect-square bg-slate-50/80 rounded-2xl overflow-hidden border border-slate-100/80 p-3 flex items-center justify-center group-hover:shadow-lg group-hover:border-emerald-200 transition-all duration-300">
+                <div className="relative w-full aspect-square bg-slate-50/80 rounded-2xl overflow-hidden border border-slate-100/80 p-4 flex items-center justify-center group-hover:shadow-xl group-hover:border-emerald-300 transition-all duration-300">
                   
                   {/* Round Dark-Green Discount Badge (-14%, -21%, -32%, etc.) */}
-                  <div className="absolute top-3 left-3 z-10 w-10 h-10 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-xs font-black shadow-md tracking-tight">
+                  <div className="absolute top-3.5 left-3.5 z-10 w-11 h-11 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-xs font-black shadow-md tracking-tight">
                     {discountPercent}
                   </div>
 
@@ -141,30 +145,30 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
                   <img
                     src={productImage}
                     alt={product.name}
-                    className="w-full h-full object-contain object-center group-hover:scale-104 transition-transform duration-500 rounded-xl"
+                    className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500 rounded-xl"
                   />
                 </div>
 
                 {/* Card Text Content (Centered, Matching Screenshot) */}
-                <div className="w-full pt-3 text-center space-y-1">
+                <div className="w-full pt-3.5 text-center space-y-1.5">
                   {/* Product Title */}
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors leading-snug line-clamp-2 min-h-[36px] flex items-center justify-center px-1">
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-emerald-800 transition-colors leading-snug line-clamp-2 min-h-[40px] flex items-center justify-center px-1">
                     {product.name}
                   </h3>
 
                   {/* Subtitle / Category */}
-                  <p className="text-[11px] text-slate-400 font-medium truncate px-2">
+                  <p className="text-xs text-slate-400 font-medium truncate px-2">
                     {product.tagline || product.category || 'Premium Hygiene Products'}
                   </p>
 
                   {/* Pricing Row: Strikethrough MRP + Bold Green Selling Price */}
-                  <div className="flex items-center justify-center gap-1.5 pt-0.5">
+                  <div className="flex items-center justify-center gap-2 pt-0.5">
                     {hasDiscount && (
-                      <span className="text-xs text-slate-400 line-through font-normal">
+                      <span className="text-xs sm:text-sm text-slate-400 line-through font-normal">
                         ₹{Number(originalPrice).toFixed(2)}
                       </span>
                     )}
-                    <span className="text-sm sm:text-base font-black text-[#1b4d3e]">
+                    <span className="text-base sm:text-lg font-black text-[#1b4d3e]">
                       ₹{Number(displayPrice).toFixed(2)}
                     </span>
                   </div>

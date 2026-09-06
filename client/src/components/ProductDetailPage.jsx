@@ -134,7 +134,7 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
       setQuantity(1);
       setActiveMediaIndex(0);
       setPincodeStatus(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo(0, 0);
     }
   }, [product]);
 

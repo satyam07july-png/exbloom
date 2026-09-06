@@ -69,12 +69,12 @@ export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory
       {/* =========================================================================
           2 PURE VISUAL POSTERS (VERTICALLY STACKED - EK KE NICHE EK)
       ========================================================================= */}
-      <div className="space-y-6">
+      <div className="space-y-6 w-full">
         
-        {/* POSTER 1 (Nexbloom Living Room Tissue Box Poster - 100% Non-cropped) */}
+        {/* POSTER 1 (Nexbloom Living Room Tissue Box Poster - 100% Non-cropped, Full Width) */}
         <div 
           onClick={() => setSelectedCategory('Face Tissue')}
-          className="relative w-full max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer group bg-slate-50"
+          className="relative w-full rounded-3xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer group bg-slate-50"
         >
           <img
             src="/nexbloom-living-room-tissue.webp"
@@ -83,10 +83,10 @@ export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory
           />
         </div>
 
-        {/* POSTER 2 (Nexbloom Paper Roll Poster - 100% Non-cropped) */}
+        {/* POSTER 2 (Nexbloom Paper Roll Poster - 100% Non-cropped, Full Width) */}
         <div 
           onClick={() => setSelectedCategory('Kitchen Roll')}
-          className="relative w-full max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer group bg-slate-50"
+          className="relative w-full rounded-3xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer group bg-slate-50"
         >
           <img
             src="/nexbloom-kitchen-roll-banner.webp"
