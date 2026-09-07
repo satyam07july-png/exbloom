@@ -215,13 +215,49 @@ export const Navbar = ({
               </button>
             ))}
 
-            {!currentUser && (
+            {currentUser ? (
+              <div className="pt-2 border-t border-emerald-100 flex flex-col gap-2 mt-1">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl">
+                  <div className="w-7 h-7 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center font-black text-xs">
+                    {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-xs font-bold text-slate-800 truncate">{currentUser.name}</p>
+                    <p className="text-[10px] text-slate-500 truncate">{currentUser.email}</p>
+                  </div>
+                </div>
+
+                {currentUser.role === 'admin' && (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setActiveTab('admin');
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-[#1b4d3e] hover:bg-emerald-50 font-black flex items-center gap-2 cursor-pointer text-xs"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Admin Portal</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onLogout();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold flex items-center gap-2 cursor-pointer text-xs"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            ) : (
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onOpenAuth();
                 }}
-                className="w-full py-2.5 rounded-lg bg-[#1b4d3e] text-white text-xs font-black text-center mt-2 shadow-xs"
+                className="w-full py-2.5 rounded-lg bg-[#1b4d3e] text-white text-xs font-black text-center mt-2 shadow-xs cursor-pointer"
               >
                 Login / Register
               </button>

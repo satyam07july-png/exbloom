@@ -116,29 +116,41 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: "Name, email, and password are required" });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: "Please enter your full name" });
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: "Please enter a valid email address" });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return res.status(400).json({ error: "Please provide a valid email address format (e.g. name@domain.com)" });
+    }
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters long for security" });
+    }
 
     // Check if email belongs to admin
     const existingAdmin = await Admin.findOne({ email: normalizedEmail });
     if (existingAdmin) {
-      return res.status(400).json({ error: "This email is reserved for administration" });
+      return res.status(400).json({ error: "This email address is reserved. Please use a different email." });
     }
 
     // Check if customer already exists
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-      return res.status(400).json({ error: "An account with this email already exists. Please log in." });
+      return res.status(400).json({ error: "An account with this email already exists. Please sign in instead." });
     }
 
     const newUser = new User({
-      name,
+      name: name.trim(),
       email: normalizedEmail,
       password,
-      phone: phone || "",
+      phone: phone ? phone.trim() : "",
       role: "customer",
     });
 
@@ -155,7 +167,7 @@ router.post("/register", async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    res.json({
+    res.status(201).json({
       success: true,
       role: "customer",
       token,
@@ -163,14 +175,54 @@ router.post("/register", async (req, res) => {
         id: newUser._id,
         name: newUser.name,
         email: newUser.email,
+        phone: newUser.phone,
         role: "customer",
       },
       message: `Account created successfully! Welcome, ${newUser.name}!`,
     });
   } catch (err) {
     console.error("Auth register error:", err);
-    res.status(500).json({ error: "Failed to create account" });
+    res.status(500).json({ error: "Failed to create account. Please try again." });
   }
+});
+
+// GET /api/auth/me -> verify token and return user profile
+router.get("/me", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    if (decoded.role === "admin") {
+      const admin = await Admin.findById(decoded.id).select("-password");
+      if (!admin) return res.status(404).json({ error: "Admin not found" });
+      return res.json({
+        success: true,
+        role: "admin",
+        user: { id: admin._id, name: admin.name, email: admin.email, role: "admin" },
+      });
+    }
+
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    return res.json({
+      success: true,
+      role: "customer",
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: "customer" },
+    });
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid or expired session token" });
+  }
+});
+
+// POST /api/auth/logout -> clean session logout endpoint
+router.post("/logout", (req, res) => {
+  return res.json({ success: true, message: "Logged out successfully" });
 });
 
 module.exports = router;

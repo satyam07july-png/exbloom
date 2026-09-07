@@ -25,9 +25,20 @@ import { ValuePillars } from './components/ValuePillars';
 import { Footer } from './components/Footer';
 import { Check } from 'lucide-react';
 import BASE_URL from './utils/api';
+import { 
+  getStoredUser, 
+  getStoredToken, 
+  clearUserSession, 
+  subscribeToAuthSync 
+} from './utils/authSync';
 
 function MainContent() {
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#admin') {
+      return 'admin';
+    }
+    return 'home';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -38,18 +49,66 @@ function MainContent() {
   });
   const [pendingCheckout, setPendingCheckout] = useState(false);
   const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const adminSaved = localStorage.getItem('nexbloom_admin_user');
-      if (adminSaved) return JSON.parse(adminSaved);
-      const userSaved = localStorage.getItem('nexbloom_user');
-      if (userSaved) return JSON.parse(userSaved);
-      return null;
-    } catch (e) {
-      return null;
-    }
+    const stored = getStoredUser();
+    return stored ? stored.user : null;
   });
 
   const { toastMessage, showToast, selectedProduct, setSelectedProduct } = useCart();
+
+  // Multi-tab auth sync & token verification
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthSync({
+      onLogin: (user, role) => {
+        if (role !== 'admin') {
+          setCurrentUser(user);
+          showToast(`Logged in as ${user.name}`);
+        }
+      },
+      onLogout: () => {
+        // Multi-tab instant auto-logout
+        setCurrentUser(null);
+        showToast('Session ended. Logged out across all tabs.');
+        setActiveTab((prev) => (prev === 'admin' || prev === 'checkout' ? 'home' : prev));
+        setAuthModalConfig((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+
+    // Session validation with backend
+    const token = getStoredToken();
+    if (token) {
+      fetch(`${BASE_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => {
+          if (res.status === 401) {
+            clearUserSession(true);
+            setCurrentUser(null);
+          } else if (res.ok) {
+            return res.json();
+          }
+        })
+        .then((data) => {
+          if (data?.user) {
+            setCurrentUser(data.user);
+          }
+        })
+        .catch(() => {});
+    }
+
+    return unsubscribe;
+  }, []);
+
+  // Listen to hash change for direct URL access to #admin
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#admin') {
+        setActiveTab('admin');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   useEffect(() => {
     fetch(`${BASE_URL}/api/products`)
@@ -133,12 +192,9 @@ function MainContent() {
 
   const handleLogout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('nexbloom_admin_token');
-    localStorage.removeItem('nexbloom_admin_user');
-    localStorage.removeItem('nexbloom_user_token');
-    localStorage.removeItem('nexbloom_user');
+    clearUserSession(true);
     showToast('Signed out successfully');
-    if (activeTab === 'admin') {
+    if (activeTab === 'admin' || activeTab === 'checkout') {
       setActiveTab('home');
     }
   };

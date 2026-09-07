@@ -38,35 +38,60 @@ import {
   Check,
   Sparkles,
   Tag,
-  Play
+  Play,
+  BookOpen,
+  FileText,
+  Globe
 } from 'lucide-react';
 import BASE_URL from '../utils/api';
+import { saveUserSession, clearUserSession, subscribeToAuthSync } from '../utils/authSync';
 
 export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
-  const [token, setToken] = useState(() => localStorage.getItem('nexbloom_admin_token') || '');
+  const [token, setToken] = useState(() => sessionStorage.getItem('nexbloom_admin_tab_token') || '');
   const [adminUser, setAdminUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('nexbloom_admin_user');
+      const saved = sessionStorage.getItem('nexbloom_admin_tab_user');
       return saved ? JSON.parse(saved) : null;
     } catch (e) {
       return null;
     }
   });
 
-  // Login Form States
-  const [loginEmail, setLoginEmail] = useState('admin@nexbloom.com');
-  const [loginPassword, setLoginPassword] = useState('admin123');
+  // Login Form States (Empty by default: mandatory ID & password entry on every tab)
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState(null);
 
   // Dashboard Active Tab & Data States
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'products', 'orders', 'queries'
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'products', 'orders', 'queries', 'blogs'
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Blogs Management States
+  const [blogs, setBlogs] = useState([]);
+  const [isBlogModalOpen, setIsBlogModalOpen] = useState(false);
+  const [editingBlog, setEditingBlog] = useState(null);
+  const [blogFilterCategory, setBlogFilterCategory] = useState('All');
+  const [blogSearchTerm, setBlogSearchTerm] = useState('');
+  const [uploadingBlogImage, setUploadingBlogImage] = useState(false);
+  const blogImageInputRef = useRef(null);
+
+  const defaultBlogForm = {
+    title: '',
+    category: 'Daily Hygiene',
+    summary: '',
+    content: '',
+    author: 'NexBloom Team',
+    image: '/nexbloom-living-room-tissue.webp',
+    readTime: '3 min read',
+    published: true,
+  };
+  const [blogForm, setBlogForm] = useState(defaultBlogForm);
   
   // Media Upload States
   const [uploadingMedia, setUploadingMedia] = useState(false);
@@ -252,8 +277,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       if (res.ok && data.success) {
         setToken(data.token);
         setAdminUser(data.admin);
-        localStorage.setItem('nexbloom_admin_token', data.token);
-        localStorage.setItem('nexbloom_admin_user', JSON.stringify(data.admin));
+        saveUserSession(data.admin, data.token, 'admin');
       } else {
         setLoginError(data.error || 'Invalid credentials');
       }
@@ -268,8 +292,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
   const handleLogout = () => {
     setToken('');
     setAdminUser(null);
-    localStorage.removeItem('nexbloom_admin_token');
-    localStorage.removeItem('nexbloom_admin_user');
+    clearUserSession(true);
   };
 
   // Dashboard Stats & Real MongoDB Orders & Queries
@@ -313,6 +336,17 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
           setProducts(prodData);
         }
       }
+
+      // 5. Blogs List
+      try {
+        const blogRes = await fetch(`${BASE_URL}/api/blogs?all=true`);
+        if (blogRes.ok) {
+          const blogData = await blogRes.json();
+          if (Array.isArray(blogData)) {
+            setBlogs(blogData);
+          }
+        }
+      } catch (be) {}
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
@@ -325,6 +359,164 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       fetchAdminData();
     }
   }, [token]);
+
+  // Multi-tab logout & session synchronization for AdminPortal
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthSync({
+      onLogout: () => {
+        // Logged out from another tab -> immediately reset AdminPortal back to Login screen
+        setToken('');
+        setAdminUser(null);
+        sessionStorage.removeItem('nexbloom_admin_tab_token');
+        sessionStorage.removeItem('nexbloom_admin_tab_user');
+      },
+      // Admin login is strictly tab-isolated: other tabs will NOT auto-login as admin
+    });
+    return unsubscribe;
+  }, []);
+
+  // Open Add Blog Modal
+  const openAddBlogModal = () => {
+    setEditingBlog(null);
+    setBlogForm(defaultBlogForm);
+    setIsBlogModalOpen(true);
+  };
+
+  // Open Edit Blog Modal
+  const openEditBlogModal = (blog) => {
+    setEditingBlog(blog);
+    setBlogForm({
+      title: blog.title || '',
+      category: blog.category || 'Daily Hygiene',
+      summary: blog.summary || '',
+      content: blog.content || '',
+      author: blog.author || 'NexBloom Team',
+      image: blog.image || '/nexbloom-living-room-tissue.webp',
+      readTime: blog.readTime || '3 min read',
+      published: blog.published !== undefined ? blog.published : true,
+    });
+    setIsBlogModalOpen(true);
+  };
+
+  // Save Blog (Create or Update)
+  const handleSaveBlog = async (e) => {
+    e.preventDefault();
+    if (!blogForm.title.trim() || !blogForm.content.trim()) {
+      alert('Please fill both Title and Content to publish the blog.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const url = editingBlog ? `${BASE_URL}/api/blogs/${editingBlog._id}` : `${BASE_URL}/api/blogs`;
+      const method = editingBlog ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(blogForm),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save blog');
+      }
+
+      if (editingBlog) {
+        setBlogs((prev) => prev.map((b) => (b._id === editingBlog._id ? data : b)));
+        alert('🎉 Blog updated successfully!');
+      } else {
+        setBlogs((prev) => [data, ...prev]);
+        alert('🎉 New blog published successfully!');
+      }
+
+      setIsBlogModalOpen(false);
+      setEditingBlog(null);
+    } catch (err) {
+      alert('Error saving blog: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete Blog
+  const handleDeleteBlog = async (blogId) => {
+    if (!window.confirm('Are you sure you want to permanently delete this blog post?')) return;
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/blogs/${blogId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        setBlogs((prev) => prev.filter((b) => b._id !== blogId));
+        alert('Blog deleted successfully');
+      } else {
+        alert('Failed to delete blog');
+      }
+    } catch (err) {
+      alert('Error deleting blog: ' + err.message);
+    }
+  };
+
+  // Toggle Blog Publish
+  const handleToggleBlogPublish = async (blog) => {
+    const updated = !blog.published;
+    try {
+      const res = await fetch(`${BASE_URL}/api/blogs/${blog._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ published: updated }),
+      });
+
+      if (res.ok) {
+        setBlogs((prev) =>
+          prev.map((b) => (b._id === blog._id ? { ...b, published: updated } : b))
+        );
+      }
+    } catch (err) {
+      console.error('Failed to toggle publish status:', err);
+    }
+  };
+
+  // Handle Blog Image Upload
+  const handleBlogImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingBlogImage(true);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/upload/image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setBlogForm((prev) => ({ ...prev, image: data.url }));
+      } else {
+        alert('Upload failed: ' + (data.error || 'Server error'));
+      }
+    } catch (err) {
+      alert('Error uploading blog image: ' + err.message);
+    } finally {
+      setUploadingBlogImage(false);
+      if (e.target) e.target.value = '';
+    }
+  };
 
   // Handle Quick Stock Update (+/-)
   const handleStockDelta = async (productId, delta) => {
@@ -809,6 +1001,20 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
                 <span>Inquiries ({queries.length})</span>
               </div>
             </button>
+
+            <button
+              onClick={() => setActiveTab('blogs')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'blogs'
+                  ? 'bg-white text-emerald-800 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                <span>Blogs &amp; Stories ({blogs.length})</span>
+              </div>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -821,13 +1027,23 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
 
-            <button
-              onClick={openAddModal}
-              className="px-4 py-2.5 bg-[#1b4d3e] hover:bg-[#143c30] text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New Product</span>
-            </button>
+            {activeTab === 'blogs' ? (
+              <button
+                onClick={openAddBlogModal}
+                className="px-4 py-2.5 bg-[#1b4d3e] hover:bg-[#143c30] text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Post New Blog</span>
+              </button>
+            ) : (
+              <button
+                onClick={openAddModal}
+                className="px-4 py-2.5 bg-[#1b4d3e] hover:bg-[#143c30] text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New Product</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1262,6 +1478,230 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
                 ))
               )}
             </div>
+          </div>
+        )}
+
+        {/* ================= TAB 5: BLOGS & CONTENT MANAGEMENT ================= */}
+        {activeTab === 'blogs' && (
+          <div className="space-y-6">
+            
+            {/* 1. Blog Metrics Header */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Articles</p>
+                  <p className="text-2xl font-black text-slate-900">{blogs.length}</p>
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Brand story &amp; hygiene guides</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Published Live</p>
+                  <p className="text-2xl font-black text-slate-900">
+                    {blogs.filter((b) => b.published !== false).length}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Visible on customer store</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Drafts</p>
+                  <p className="text-2xl font-black text-slate-900">
+                    {blogs.filter((b) => b.published === false).length}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Unpublished drafts</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Controls & Filter Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search by title, author..."
+                    value={blogSearchTerm}
+                    onChange={(e) => setBlogSearchTerm(e.target.value)}
+                    className="w-full bg-slate-50 text-xs pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-medium"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-slate-400" />
+                  <select
+                    value={blogFilterCategory}
+                    onChange={(e) => setBlogFilterCategory(e.target.value)}
+                    className="bg-slate-50 text-xs font-bold text-slate-700 px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="All">All Categories</option>
+                    <option value="Daily Hygiene">Daily Hygiene</option>
+                    <option value="Skincare">Skincare</option>
+                    <option value="Sustainability">Sustainability</option>
+                    <option value="Kitchen & Home">Kitchen & Home</option>
+                    <option value="Hygiene Science">Hygiene Science</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={openAddBlogModal}
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#1b4d3e] hover:bg-[#143c30] text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Write &amp; Post Blog</span>
+              </button>
+            </div>
+
+            {/* 3. Blogs Grid List */}
+            {blogs
+              .filter((b) => {
+                const matchCat = blogFilterCategory === 'All' || b.category === blogFilterCategory;
+                const matchSearch =
+                  !blogSearchTerm ||
+                  b.title.toLowerCase().includes(blogSearchTerm.toLowerCase()) ||
+                  (b.author && b.author.toLowerCase().includes(blogSearchTerm.toLowerCase())) ||
+                  (b.summary && b.summary.toLowerCase().includes(blogSearchTerm.toLowerCase()));
+                return matchCat && matchSearch;
+              })
+              .length === 0 ? (
+              <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-300 p-8 space-y-3">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 text-[#1b4d3e] flex items-center justify-center border border-emerald-200 shadow-xs">
+                  <BookOpen className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">No Blog Posts Found</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  {blogSearchTerm || blogFilterCategory !== 'All'
+                    ? 'No blogs matched your current search or category filter.'
+                    : 'Start publishing engaging hygiene, wellness, and sustainability stories for your customers!'}
+                </p>
+                <button
+                  onClick={openAddBlogModal}
+                  className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 bg-[#1b4d3e] hover:bg-[#143c30] text-white text-xs font-bold rounded-full shadow-xs cursor-pointer transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Write First Blog Post</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {blogs
+                  .filter((b) => {
+                    const matchCat = blogFilterCategory === 'All' || b.category === blogFilterCategory;
+                    const matchSearch =
+                      !blogSearchTerm ||
+                      b.title.toLowerCase().includes(blogSearchTerm.toLowerCase()) ||
+                      (b.author && b.author.toLowerCase().includes(blogSearchTerm.toLowerCase())) ||
+                      (b.summary && b.summary.toLowerCase().includes(blogSearchTerm.toLowerCase()));
+                    return matchCat && matchSearch;
+                  })
+                  .map((blog) => (
+                    <div
+                      key={blog._id}
+                      className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group"
+                    >
+                      <div>
+                        {/* Cover Image */}
+                        <div className="relative aspect-16/9 w-full bg-slate-100 overflow-hidden">
+                          <img
+                            src={blog.image || '/nexbloom-living-room-tissue.webp'}
+                            alt={blog.title}
+                            className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
+                          />
+                          
+                          {/* Top-Right Status Badge */}
+                          <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                            <span
+                              className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full backdrop-blur-xs shadow-xs ${
+                                blog.published !== false
+                                  ? 'bg-emerald-600/90 text-white'
+                                  : 'bg-amber-500/90 text-white'
+                              }`}
+                            >
+                              {blog.published !== false ? 'Live Published' : 'Draft'}
+                            </span>
+                          </div>
+
+                          {/* Top-Left Date Badge */}
+                          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-xl text-center shadow-xs">
+                            <span className="block text-xs font-black text-slate-900 leading-none">
+                              {blog.day || '07'}
+                            </span>
+                            <span className="block text-[9px] font-extrabold text-slate-600 uppercase">
+                              {blog.month || 'SEP'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Text Details */}
+                        <div className="p-4 space-y-2">
+                          <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold">
+                            <span className="text-emerald-700 uppercase">{blog.category || 'General'}</span>
+                            <span>{blog.readTime || '3 min read'}</span>
+                          </div>
+
+                          <h4 className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+                            {blog.title}
+                          </h4>
+
+                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                            {blog.summary || blog.content?.substring(0, 100) + '...'}
+                          </p>
+
+                          <p className="text-[11px] text-slate-400 pt-1">
+                            Author: <strong className="text-slate-700">{blog.author || 'NexBloom Team'}</strong>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Card Bottom Actions */}
+                      <div className="p-4 pt-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <button
+                          onClick={() => handleToggleBlogPublish(blog)}
+                          className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${
+                            blog.published !== false
+                              ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                              : 'border-amber-200 text-amber-700 hover:bg-amber-50'
+                          }`}
+                        >
+                          {blog.published !== false ? 'Unpublish' : 'Publish'}
+                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => openEditBlogModal(blog)}
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+                            title="Edit Blog Post"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBlog(blog._id)}
+                            className="p-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 transition-colors cursor-pointer"
+                            title="Delete Blog Post"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  ))}
+              </div>
+            )}
+
           </div>
         )}
 
@@ -1800,6 +2240,260 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
                 >
                   <Check className="w-4 h-4" />
                   <span>{editingProduct ? 'Update Product' : 'Save & Publish to Store'}</span>
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📖 BLOG POSTING & EDITING MODAL */}
+      {/* ========================================================================= */}
+      {isBlogModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden my-8 border border-slate-200">
+            
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-200">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    {editingBlog ? 'Edit Blog Article' : 'Write & Publish New Blog'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Share knowledge on hygiene, skincare, and sustainable living
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBlogModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form Body */}
+            <form onSubmit={handleSaveBlog} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+              
+              {/* SECTION 1: TITLE & CATEGORY */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                    Article Title <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 5 Science-Backed Reasons Bamboo Tissues Are Better For Your Skin"
+                    value={blogForm.title}
+                    onChange={(e) => setBlogForm({ ...blogForm, title: e.target.value })}
+                    className="w-full bg-slate-50 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                      Category
+                    </label>
+                    <select
+                      value={blogForm.category}
+                      onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
+                      className="w-full bg-slate-50 text-xs font-bold text-slate-700 px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="Daily Hygiene">Daily Hygiene</option>
+                      <option value="Skincare">Skincare</option>
+                      <option value="Sustainability">Sustainability</option>
+                      <option value="Kitchen & Home">Kitchen & Home</option>
+                      <option value="Hygiene Science">Hygiene Science</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                      Author Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="NexBloom Team"
+                      value={blogForm.author}
+                      onChange={(e) => setBlogForm({ ...blogForm, author: e.target.value })}
+                      className="w-full bg-slate-50 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                      Estimated Read Time
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 3 min read"
+                      value={blogForm.readTime}
+                      onChange={(e) => setBlogForm({ ...blogForm, readTime: e.target.value })}
+                      className="w-full bg-slate-50 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: COVER IMAGE */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Featured Cover Image
+                </label>
+                
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  {/* Image Preview */}
+                  <div className="w-32 h-20 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                    {blogForm.image ? (
+                      <img
+                        src={blogForm.image}
+                        alt="Blog preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">
+                        No Image
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-2 w-full">
+                    {/* Cloudinary Upload Button */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        ref={blogImageInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleBlogImageUpload}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => blogImageInputRef.current?.click()}
+                        disabled={uploadingBlogImage}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{uploadingBlogImage ? 'Uploading Image...' : 'Upload Cover Photo'}</span>
+                      </button>
+                      <span className="text-[11px] text-slate-400">or paste image URL below:</span>
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder="https://... or /nexbloom-living-room-tissue.webp"
+                      value={blogForm.image}
+                      onChange={(e) => setBlogForm({ ...blogForm, image: e.target.value })}
+                      className="w-full bg-slate-50 text-xs px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500"
+                    />
+
+                    {/* Fast Presets */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[10px] text-slate-400 font-semibold">Presets:</span>
+                      {[
+                        { label: 'Living Room', url: '/nexbloom-living-room-tissue.webp' },
+                        { label: 'Dining Setup', url: '/nexbloom-dining-table-tissue.webp' },
+                        { label: 'Kitchen Rolls', url: '/nexbloom-kitchen-rolls-countertop.webp' },
+                        { label: 'Car Box', url: '/nexbloom-car-tissue-box.webp' },
+                        { label: 'Bathroom Rolls', url: '/nexbloom-bathroom-tissue-rolls.webp' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => setBlogForm({ ...blogForm, image: preset.url })}
+                          className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
+                            blogForm.image === preset.url
+                              ? 'bg-emerald-100 border-emerald-300 text-emerald-800 font-bold'
+                              : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: SHORT SUMMARY / EXCERPT */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Short Summary / Excerpt
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Brief preview shown on blog cards (optional, auto-generated from content if left empty)..."
+                  value={blogForm.summary}
+                  onChange={(e) => setBlogForm({ ...blogForm, summary: e.target.value })}
+                  className="w-full bg-slate-50 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 leading-relaxed"
+                />
+              </div>
+
+              {/* SECTION 4: FULL ARTICLE BODY */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Full Article Content <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    Use blank lines for paragraphs. Use <code className="bg-slate-100 px-1 py-0.5 rounded text-emerald-700">### Heading</code> for sub-headings.
+                  </span>
+                </div>
+                <textarea
+                  rows={10}
+                  required
+                  placeholder={`Write your blog post here...\n\n### The Pure Touch of Bamboo\nNexbloom tissues are crafted from 100% natural, unbleached organic bamboo fibers...\n\n### Gentle On Skin, Kind To Earth\nUnlike traditional wood-pulp tissues that require cutting down trees, bamboo grows back within months...`}
+                  value={blogForm.content}
+                  onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
+                  className="w-full bg-slate-50 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 leading-relaxed font-mono"
+                />
+              </div>
+
+              {/* SECTION 5: PUBLISH STATUS TOGGLE */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl">
+                <div>
+                  <p className="text-xs font-bold text-slate-800">Publish Immediately</p>
+                  <p className="text-[10px] text-slate-500">
+                    When enabled, this blog will be immediately visible on the website and blog archive.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={blogForm.published}
+                    onChange={(e) => setBlogForm({ ...blogForm, published: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+
+              {/* SUBMIT BUTTONS */}
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3 sticky bottom-0 bg-white py-2">
+                <button
+                  type="button"
+                  onClick={() => setIsBlogModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-2.5 rounded-xl bg-[#1b4d3e] hover:bg-[#143c30] text-white font-black text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{editingBlog ? 'Update Blog Post' : 'Publish Blog Post'}</span>
                 </button>
               </div>
 

@@ -1,28 +1,43 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MessageSquare, User, X, Share2, Check, ArrowRight, Search, Clock, BookOpen, Sparkles, Filter } from 'lucide-react';
+import BASE_URL from '../utils/api';
 
 export const ALL_BLOGS = [];
 
-
 export const Blogs = ({ isSection = false, onNavigateToBlogs }) => {
+  const [blogsList, setBlogsList] = useState([]);
   const [activeArticle, setActiveArticle] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/blogs`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch blogs');
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setBlogsList(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const categories = ['All', 'Daily Hygiene', 'Skincare', 'Sustainability', 'Kitchen & Home', 'Hygiene Science'];
 
   const filteredBlogs = useMemo(() => {
-    return ALL_BLOGS.filter((blog) => {
+    return blogsList.filter((blog) => {
       const matchesCat = selectedCategory === 'All' || blog.category === selectedCategory;
       const matchesSearch =
         !searchQuery ||
         blog.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        blog.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        blog.category.toLowerCase().includes(searchQuery.toLowerCase());
+        (blog.summary && blog.summary.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (blog.category && blog.category.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchesCat && matchesSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [blogsList, selectedCategory, searchQuery]);
 
   const handleShare = (id) => {
     navigator.clipboard.writeText(window.location.href);
@@ -34,7 +49,7 @@ export const Blogs = ({ isSection = false, onNavigateToBlogs }) => {
   // 1. LANDING PAGE SECTION VIEW (TOP 3 LATEST BLOGS + "VIEW MORE BLOGS" BUTTON)
   // ─────────────────────────────────────────────────────────────────────────────
   if (isSection) {
-    const latestBlogs = ALL_BLOGS.slice(0, 3);
+    const latestBlogs = blogsList.slice(0, 3);
 
     return (
       <section id="our-blog-section" className="py-16 bg-white border-b border-slate-200/80">
@@ -69,7 +84,7 @@ export const Blogs = ({ isSection = false, onNavigateToBlogs }) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {latestBlogs.map((blog) => (
                   <article
-                    key={blog.id}
+                    key={blog._id || blog.id}
                     onClick={() => setActiveArticle(blog)}
                     className="flex flex-col justify-between group cursor-pointer bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs hover:shadow-xl hover:border-emerald-200 transition-all duration-300 p-4"
                   >
@@ -214,7 +229,7 @@ export const Blogs = ({ isSection = false, onNavigateToBlogs }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredBlogs.map((blog) => (
             <article
-              key={blog.id}
+              key={blog._id || blog.id}
               onClick={() => setActiveArticle(blog)}
               className="flex flex-col justify-between group cursor-pointer bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs hover:shadow-xl hover:border-emerald-200 transition-all duration-300 p-5"
             >
@@ -314,11 +329,11 @@ const BlogModal = ({ article, onClose, onShare, copiedId }) => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onShare(article.id)}
+              onClick={() => onShare(article._id || article.id)}
               className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
               title="Share Article Link"
             >
-              {copiedId === article.id ? (
+              {copiedId === (article._id || article.id) ? (
                 <Check className="w-4 h-4 text-emerald-600" />
               ) : (
                 <Share2 className="w-4 h-4" />

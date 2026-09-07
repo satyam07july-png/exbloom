@@ -4,10 +4,13 @@ import {
   Eye, 
   EyeOff, 
   User as UserIcon, 
-  AlertCircle 
+  AlertCircle,
+  ShieldCheck,
+  Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import BASE_URL from '../utils/api';
+import { saveUserSession } from '../utils/authSync';
 
 export const AuthModal = ({
   isOpen,
@@ -46,8 +49,28 @@ export const AuthModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    // Client-side validations
+    const cleanEmail = formData.email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setError('Please enter a valid email address (e.g. name@example.com)');
+      return;
+    }
+
+    if (isRegister) {
+      if (!formData.name.trim() || formData.name.trim().length < 2) {
+        setError('Please enter your full name (minimum 2 characters)');
+        return;
+      }
+      if (!formData.password || formData.password.length < 6) {
+        setError('Password must be at least 6 characters long for security');
+        return;
+      }
+    }
+
+    setLoading(true);
 
     const endpoint = isRegister
       ? `${BASE_URL}/api/auth/register`
@@ -57,22 +80,21 @@ export const AuthModal = ({
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          email: cleanEmail,
+        }),
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
-        if (data.role === 'admin') {
-          localStorage.setItem('nexbloom_admin_token', data.token);
-          localStorage.setItem('nexbloom_admin_user', JSON.stringify(data.user));
-          try {
-            confetti({ particleCount: 60, spread: 50, origin: { y: 0.6 } });
-          } catch (err) {}
-        } else {
-          localStorage.setItem('nexbloom_user_token', data.token);
-          localStorage.setItem('nexbloom_user', JSON.stringify(data.user));
-        }
+        // Multi-tab sync & local persistence
+        saveUserSession(data.user, data.token, data.role);
+
+        try {
+          confetti({ particleCount: 60, spread: 50, origin: { y: 0.6 } });
+        } catch (err) {}
 
         onLoginSuccess(data);
         onClose();

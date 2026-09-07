@@ -26,4 +26,26 @@ const protectAdmin = async (req, res, next) => {
   }
 };
 
-module.exports = { protectAdmin, JWT_SECRET };
+const protectUser = async (req, res, next) => {
+  let token;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    try {
+      token = req.headers.authorization.split(" ")[1];
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+      return next();
+    } catch (err) {
+      return res.status(401).json({ error: "Session expired or invalid. Please sign in again." });
+    }
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: "No authentication token provided" });
+  }
+};
+
+module.exports = { protectAdmin, protectUser, JWT_SECRET };
