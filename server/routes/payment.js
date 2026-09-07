@@ -97,6 +97,44 @@ router.post("/order", async (req, res) => {
   }
 });
 
+// POST /api/payment/cod -> Place Cash on Delivery Order directly
+router.post("/cod", async (req, res) => {
+  try {
+    const { amount, customer, items } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: "Invalid order amount" });
+    }
+
+    if (!customer || !customer.name || !customer.email || !customer.phone || !customer.address) {
+      return res.status(400).json({ error: "Complete customer delivery details are required" });
+    }
+
+    const codOrderId = `order_cod_${Date.now()}`;
+
+    const newOrder = new Order({
+      customer,
+      items,
+      totalAmount: amount,
+      razorpayOrderId: codOrderId,
+      paymentMethod: "cod",
+      status: "placed",
+    });
+
+    await newOrder.save();
+
+    res.json({
+      success: true,
+      message: "Order placed successfully via Cash on Delivery",
+      order: newOrder,
+      dbOrderId: newOrder._id,
+    });
+  } catch (err) {
+    console.error("COD Order placement error:", err);
+    res.status(500).json({ error: "Failed to place Cash on Delivery order" });
+  }
+});
+
 // POST /api/payment/verify -> Verify signature and mark order paid
 router.post("/verify", async (req, res) => {
   try {

@@ -12,6 +12,7 @@ import { AdminPortal } from './components/AdminPortal';
 import { AuthModal } from './components/AuthModal';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { ProductDetailPage } from './components/ProductDetailPage';
+import { CheckoutPage } from './components/CheckoutPage';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
@@ -30,7 +31,12 @@ function MainContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalConfig, setAuthModalConfig] = useState({
+    isOpen: false,
+    mode: 'login',
+    message: null,
+  });
+  const [pendingCheckout, setPendingCheckout] = useState(false);
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const adminSaved = localStorage.getItem('nexbloom_admin_user');
@@ -77,7 +83,28 @@ function MainContent() {
 
   const handleTabChange = (tab) => {
     setSelectedProduct(null);
+    if (tab === 'checkout') {
+      handleProceedToCheckout();
+      return;
+    }
     setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Auth-gated checkout transition
+  const handleProceedToCheckout = () => {
+    setSelectedProduct(null);
+    if (!currentUser) {
+      showToast('First create your account before order');
+      setPendingCheckout(true);
+      setAuthModalConfig({
+        isOpen: true,
+        mode: 'register',
+        message: 'First create your account before order',
+      });
+      return;
+    }
+    setActiveTab('checkout');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -92,6 +119,15 @@ function MainContent() {
       }, 300);
     } else {
       showToast(`Welcome back, ${authData.user.name}!`);
+      if (pendingCheckout) {
+        setPendingCheckout(false);
+        showToast('Account ready! Proceeding to Checkout...');
+        setTimeout(() => {
+          setSelectedProduct(null);
+          setActiveTab('checkout');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 300);
+      }
     }
   };
 
@@ -137,7 +173,7 @@ function MainContent() {
         setActiveTab={handleTabChange}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenAuth={() => setAuthModalConfig({ isOpen: true, mode: 'login', message: null })}
         currentUser={currentUser}
         onLogout={handleLogout}
       />
@@ -174,7 +210,7 @@ function MainContent() {
                 <RedefiningCare />
                 <UpgradeToBetterCare />
                 <Reviews />
-                <Blogs isSection={true} />
+                <Blogs isSection={true} onNavigateToBlogs={() => handleTabChange('blogs')} />
               </div>
             )}
 
@@ -185,6 +221,29 @@ function MainContent() {
                   searchQuery={searchQuery}
                   setSearchQuery={setSearchQuery}
                   initialCategory={selectedCategory}
+                />
+              </div>
+            )}
+
+            {activeTab === 'checkout' && (
+              <div>
+                <CheckoutPage
+                  currentUser={currentUser}
+                  onBackToShopping={() => {
+                    setActiveTab('catalog');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  onOpenAuth={(mode, msg) => {
+                    setPendingCheckout(true);
+                    setAuthModalConfig({
+                      isOpen: true,
+                      mode: mode || 'register',
+                      message: msg || 'First create your account before order',
+                    });
+                  }}
+                  onOrderSuccess={(completedOrder) => {
+                    showToast('🎉 Order placed successfully!');
+                  }}
                 />
               </div>
             )}
@@ -218,11 +277,13 @@ function MainContent() {
 
       {/* Modals & Overlays */}
       <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        isOpen={authModalConfig.isOpen}
+        initialMode={authModalConfig.mode}
+        noticeMessage={authModalConfig.message}
+        onClose={() => setAuthModalConfig((prev) => ({ ...prev, isOpen: false, message: null }))}
         onLoginSuccess={handleLoginSuccess}
       />
-      <CartDrawer />
+      <CartDrawer onProceedToCheckout={handleProceedToCheckout} />
       <CheckoutModal />
       <OrderSuccessModal onContinueShopping={() => handleTabChange('catalog')} />
     </div>

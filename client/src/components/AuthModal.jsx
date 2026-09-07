@@ -9,8 +9,14 @@ import {
 import confetti from 'canvas-confetti';
 import BASE_URL from '../utils/api';
 
-export const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
-  const [isRegister, setIsRegister] = useState(false);
+export const AuthModal = ({
+  isOpen,
+  onClose,
+  onLoginSuccess,
+  initialMode = 'login',
+  noticeMessage = null,
+}) => {
+  const [isRegister, setIsRegister] = useState(initialMode === 'register');
   const [rememberMe, setRememberMe] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -22,6 +28,14 @@ export const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Sync mode when modal opens or initialMode changes
+  React.useEffect(() => {
+    if (isOpen) {
+      setIsRegister(initialMode === 'register');
+      setError(null);
+    }
+  }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 
@@ -78,9 +92,16 @@ export const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
         
         {/* ================= MODAL HEADER ================= */}
         <div className="pt-6 pb-4 px-7 flex items-center justify-between border-b border-slate-100">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            {isRegister ? 'Register' : 'Sign in'}
-          </h2>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              {isRegister ? 'Create Account' : 'Sign in'}
+            </h2>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+              {isRegister
+                ? 'Join Nexbloom to track orders & earn rewards'
+                : 'Welcome back to your Nexbloom account'}
+            </p>
+          </div>
           
           <button
             onClick={onClose}
@@ -90,6 +111,21 @@ export const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
             <span>Close</span>
           </button>
         </div>
+
+        {/* ================= NOTICE MESSAGE (FIRST CREATE YOUR ACCOUNT) ================= */}
+        {noticeMessage && (
+          <div className="mx-7 mt-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-900 text-xs flex items-start gap-2.5 shadow-2xs">
+            <div className="w-5 h-5 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black">
+              ✓
+            </div>
+            <div className="leading-snug">
+              <p className="font-bold text-emerald-950">{noticeMessage}</p>
+              <p className="text-[11px] text-emerald-800 mt-0.5">
+                Takes only 30 seconds. Your order details and tracking will be saved safely.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ================= ERROR ALERT ================= */}
         {error && (

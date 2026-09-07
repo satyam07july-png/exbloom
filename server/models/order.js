@@ -28,9 +28,14 @@ const orderSchema = new mongoose.Schema(
     razorpayOrderId: { type: String, required: true },
     razorpayPaymentId: { type: String },
     razorpaySignature: { type: String },
+    paymentMethod: {
+      type: String,
+      enum: ["online", "cod"],
+      default: "online",
+    },
     status: {
       type: String,
-      enum: ["created", "paid", "failed"],
+      enum: ["created", "paid", "failed", "cod", "placed"],
       default: "created",
     },
   },

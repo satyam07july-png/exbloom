@@ -2,7 +2,7 @@ import React from 'react';
 import { X, Trash2, Plus, Minus, ArrowRight, ShoppingBag, Truck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
-export const CartDrawer = () => {
+export const CartDrawer = ({ onProceedToCheckout }) => {
   const {
     cart,
     isCartOpen,
@@ -181,9 +181,13 @@ export const CartDrawer = () => {
               <button
                 onClick={() => {
                   setIsCartOpen(false);
-                  setIsCheckoutOpen(true);
+                  if (onProceedToCheckout) {
+                    onProceedToCheckout();
+                  } else {
+                    setIsCheckoutOpen(true);
+                  }
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-xl bg-[#1b4d3e] hover:bg-[#143c30] text-white font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
               >
                 <span>Proceed to Checkout</span>
                 <ArrowRight className="w-4 h-4" />
