@@ -406,7 +406,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     }
     finalImages = finalImages.filter(Boolean);
 
-    const finalImage = productForm.image || finalImages[0] || 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80';
+    const finalImage = productForm.image || finalImages[0] || '/redefine-tissue-box.webp';
 
     const cleanForm = { ...productForm };
     delete cleanForm._id;

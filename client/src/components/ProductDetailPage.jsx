@@ -40,23 +40,23 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
     const c = cat.toLowerCase();
     if (c.includes('kitchen')) {
       return [
-        'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1616627547584-bf28cee262db?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80',
+        '/nexbloom-kitchen-roll-banner.webp',
+        '/bettercare-kitchen.webp',
+        '/redefine-tissue-box.webp',
       ];
     }
     if (c.includes('toilet') || c.includes('bath')) {
       return [
-        'https://images.unsplash.com/photo-1584556812952-905ffd0c611a?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80',
-        'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80',
+        '/toilet-roll.webp',
+        '/bettercare-family.webp',
+        '/redefine-tissue-box.webp',
       ];
     }
     // Default / Face tissue / Cube box
     return [
-      'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80',
+      '/nexbloom-living-room-tissue.webp',
+      '/bettercare-skincare.webp',
+      '/redefine-tissue-box.webp',
     ];
   };
 

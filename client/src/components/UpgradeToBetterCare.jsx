@@ -27,19 +27,19 @@ const slides = [
       id: 4,
       title: 'Eco-Friendly Plant Seeds',
       subtitle: 'Gifted with Every Box',
-      image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80',
+      image: '/redefine-tissue-box.webp',
     },
     {
       id: 5,
       title: 'CloudSoft 3-Ply Toilet Rolls',
       subtitle: '100% Flushable & Clog-Free',
-      image: 'https://images.unsplash.com/photo-1584556812952-905ffd0c611a?auto=format&fit=crop&w=800&q=80',
+      image: '/toilet-roll.webp',
     },
     {
       id: 6,
       title: 'Table & Dining Luxury',
       subtitle: 'Embossed Soft Napkins',
-      image: 'https://images.unsplash.com/photo-1616627547584-bf28cee262db?auto=format&fit=crop&w=800&q=80',
+      image: '/nexbloom-living-room-tissue.webp',
     },
   ],
 ];

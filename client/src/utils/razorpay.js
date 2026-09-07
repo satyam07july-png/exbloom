@@ -61,9 +61,9 @@ export const handleRazorpayPayment = async ({
       key: key,
       amount: order.amount,
       currency: order.currency || 'INR',
-      name: 'NEXBLOOM Audio Co.',
+      name: 'NexBloom Hygiene',
       description: `Payment for ${cartItems.length} items`,
-      image: 'https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&w=200&q=80',
+      image: '/redefine-tissue-box.webp',
       order_id: order.id.startsWith('order_mock_') ? undefined : order.id,
       prefill: {
         name: customerData.name,
