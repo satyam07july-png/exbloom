@@ -6,6 +6,7 @@ import {
   X
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { TiltCard } from './TiltCard';
 
 export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory = 'All' }) => {
   const { addToCart, setSelectedProduct } = useCart();
@@ -182,37 +183,54 @@ export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory
             const discountPercent = Math.round(((originalPrice - activeVariant.price) / originalPrice) * 100);
 
             return (
-              <div
+              <TiltCard
                 key={product._id}
-                className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col justify-between group hover:border-emerald-300 transition-all duration-200 shadow-2xs hover:shadow-md"
+                maxTilt={10}
+                perspective={1000}
+                scale={1.02}
+                className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col justify-between group hover:border-emerald-300 transition-all duration-300 preserve-3d"
               >
                 <div>
-                  <div className="relative h-52 w-full bg-slate-100 overflow-hidden">
+                  <div 
+                    className="relative h-52 w-full bg-slate-100 overflow-hidden preserve-3d"
+                    style={{ transform: 'translateZ(18px)' }}
+                  >
                     {/* Top-Left Circular Discount Tag */}
-                    <div className="absolute top-2.5 left-2.5 z-10 w-9 h-9 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-[11px] font-bold shadow-md">
+                    <div 
+                      className="absolute top-2.5 left-2.5 z-10 w-9 h-9 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-[11px] font-bold shadow-md"
+                      style={{ transform: 'translateZ(30px)' }}
+                    >
                       -{discountPercent > 0 ? discountPercent : 15}%
                     </div>
 
                     <img
                       src={product.image}
                       alt={product.name}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
+                      style={{ transform: 'translateZ(20px)' }}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
 
                     {/* Pulls / Sheets badge */}
                     {product.pullsCount && (
-                      <span className="absolute top-2.5 left-2.5 bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-xs">
+                      <span 
+                        style={{ transform: 'translateZ(28px)' }}
+                        className="absolute top-2.5 left-2.5 bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-xs"
+                      >
                         {product.pullsCount}
                       </span>
                     )}
 
-                    <span className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-xs border border-slate-200 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                    <span 
+                      style={{ transform: 'translateZ(25px)' }}
+                      className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-xs border border-slate-200 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-md"
+                    >
                       {product.ply || '2-Ply'}
                     </span>
 
                     <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <button
                         onClick={() => setSelectedProduct(product)}
+                        style={{ transform: 'translateZ(32px)' }}
                         className="p-2.5 bg-white text-slate-800 rounded-full hover:bg-emerald-600 hover:text-white transition-colors shadow-md cursor-pointer"
                         title="View Specifications & Packs"
                       >
@@ -221,7 +239,10 @@ export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory
                     </div>
                   </div>
 
-                  <div className="p-4 space-y-3">
+                  <div 
+                    className="p-4 space-y-3 preserve-3d"
+                    style={{ transform: 'translateZ(15px)' }}
+                  >
                     <div>
                       <h3
                         onClick={() => setSelectedProduct(product)}
@@ -260,7 +281,10 @@ export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory
                   </div>
                 </div>
 
-                <div className="p-4 pt-0">
+                <div 
+                  className="p-4 pt-0 preserve-3d"
+                  style={{ transform: 'translateZ(18px)' }}
+                >
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                     <div>
                       <span className="text-[10px] text-slate-400 block leading-none font-medium">
@@ -280,6 +304,7 @@ export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory
 
                     <button
                       onClick={() => addToCart(product, activeVariant)}
+                      style={{ transform: 'translateZ(26px)' }}
                       className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs active:scale-95 cursor-pointer transition-all"
                     >
                       <ShoppingBag className="w-3.5 h-3.5" />
@@ -287,7 +312,7 @@ export const Catalog = ({ products, searchQuery, setSearchQuery, initialCategory
                     </button>
                   </div>
                 </div>
-              </div>
+              </TiltCard>
             );
           })}
         </div>

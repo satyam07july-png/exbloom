@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Heart, Search, Shuffle, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { TiltCard } from './TiltCard';
 import BASE_URL from '../utils/api';
 
 export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) => {
@@ -115,36 +116,47 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
             const isCardActive = hoveredCardId === product._id || activeCardId === product._id;
 
             return (
-              <div
+              <TiltCard
                 key={product._id}
+                maxTilt={10}
+                perspective={1000}
+                scale={1.025}
                 onMouseEnter={() => setHoveredCardId(product._id)}
                 onMouseLeave={() => setHoveredCardId(null)}
                 onClick={() => setActiveCardId(activeCardId === product._id ? null : product._id)}
-                className={`group relative bg-white rounded-2xl p-3 border transition-all duration-300 flex flex-col items-center ${
+                className={`group relative bg-white rounded-2xl p-3 border transition-all duration-300 flex flex-col items-center preserve-3d ${
                   isCardActive
-                    ? 'shadow-xl border-slate-200 z-20 -translate-y-1'
-                    : 'border-transparent shadow-2xs hover:border-slate-200 hover:shadow-lg'
+                    ? 'border-emerald-300/90 z-20'
+                    : 'border-slate-100 hover:border-slate-200'
                 }`}
               >
                 {/* 1. Image Box with Top-Left Round Discount Badge + Split Icon */}
-                <div className="relative w-full aspect-square bg-slate-50/80 rounded-2xl overflow-hidden border border-slate-100/80 p-3 flex items-center justify-center">
+                <div 
+                  className="relative w-full aspect-square bg-slate-50/80 rounded-2xl overflow-hidden border border-slate-100/80 p-3 flex items-center justify-center preserve-3d"
+                  style={{ transform: 'translateZ(20px)' }}
+                >
                   
-                  {/* Round Dark-Green Discount Badge */}
-                  <div className="absolute top-3 left-3 z-10 w-10 h-10 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-xs font-black shadow-md tracking-tight">
+                  {/* Round Dark-Green Discount Badge (Floats above image) */}
+                  <div 
+                    className="absolute top-3 left-3 z-10 w-10 h-10 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-xs font-black shadow-md tracking-tight"
+                    style={{ transform: 'translateZ(30px)' }}
+                  >
                     {discountPercent}
                   </div>
 
-                  {/* Product Image */}
+                  {/* Product Image (Floats in 3D parallax) */}
                   <img
                     src={productImage}
                     alt={product.name}
                     onClick={(e) => handleOpenProduct(product, e)}
-                    className="w-full h-full object-contain object-center group-hover:scale-104 transition-transform duration-500 rounded-xl cursor-pointer"
+                    style={{ transform: 'translateZ(25px)' }}
+                    className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500 rounded-xl cursor-pointer drop-shadow-sm"
                   />
 
-                  {/* Shuffle / Quick View Icon (Bottom-Right of Image, matching refrence.mp4) */}
+                  {/* Shuffle / Quick View Icon */}
                   <button
                     onClick={(e) => handleOpenProduct(product, e)}
+                    style={{ transform: 'translateZ(32px)' }}
                     className="absolute bottom-3 right-3 z-10 w-8 h-8 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-sm flex items-center justify-center text-slate-500 hover:text-[#1b4d3e] hover:border-emerald-300 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 cursor-pointer"
                     title="Compare / View Specs"
                   >
@@ -153,7 +165,10 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
                 </div>
 
                 {/* 2. Permanent Product Info (Title, Subtitle, Price) */}
-                <div className="w-full pt-3 text-center space-y-1">
+                <div 
+                  className="w-full pt-3 text-center space-y-1 preserve-3d"
+                  style={{ transform: 'translateZ(15px)' }}
+                >
                   {/* Product Title */}
                   <h3
                     onClick={(e) => handleOpenProduct(product, e)}
@@ -180,8 +195,9 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
                   </div>
                 </div>
 
-                {/* 3. Interactive Expandable Section (Slide down on hover / click, matching refrence.mp4) */}
+                {/* 3. Interactive Expandable Section */}
                 <div
+                  style={{ transform: 'translateZ(22px)' }}
                   className={`w-full overflow-hidden transition-all duration-300 ease-in-out ${
                     isCardActive
                       ? 'max-h-64 opacity-100 mt-2.5 pt-2 border-t border-slate-100'
@@ -196,6 +212,7 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
                   {/* Dark Green ADD TO CART Button */}
                   <button
                     onClick={(e) => handleAddToCart(product, e)}
+                    style={{ transform: 'translateZ(28px)' }}
                     className="w-full mt-3 py-2 px-4 rounded-xl bg-[#1b4d3e] hover:bg-[#143c30] text-white text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
                   >
                     <span>ADD TO CART</span>
@@ -225,7 +242,7 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
                   </div>
                 </div>
 
-              </div>
+              </TiltCard>
             );
           })}
         </div>

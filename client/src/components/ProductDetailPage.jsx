@@ -20,6 +20,7 @@ import {
   Layers
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { TiltCard } from './TiltCard';
 
 export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onSelectProduct }) => {
   const { addToCart, showToast } = useCart();
@@ -904,20 +905,29 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
               const variantImg = v.image || product.image || '/redefine-tissue-box.webp';
 
               return (
-                <div
+                <TiltCard
                   key={idx}
-                  className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between ${
+                  maxTilt={8}
+                  perspective={1000}
+                  scale={1.02}
+                  className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between preserve-3d ${
                     isCurrent
                       ? 'border-emerald-600 bg-emerald-50/40 shadow-md ring-2 ring-emerald-500/80'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
                   }`}
                 >
-                  <div className="space-y-4">
+                  <div className="space-y-4 preserve-3d" style={{ transform: 'translateZ(15px)' }}>
                     <div className="flex gap-4 items-start">
-                      <div className="relative w-22 h-22 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200 shadow-2xs">
-                        <img src={variantImg} alt={v.size} className="w-full h-full object-cover" />
+                      <div 
+                        className="relative w-22 h-22 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200 shadow-2xs preserve-3d"
+                        style={{ transform: 'translateZ(20px)' }}
+                      >
+                        <img src={variantImg} alt={v.size} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         {vDiscount && (
-                          <span className="absolute top-1 left-1 bg-emerald-700 text-white font-black text-[9px] px-1.5 py-0.5 rounded shadow-xs">
+                          <span 
+                            style={{ transform: 'translateZ(30px)' }}
+                            className="absolute top-1 left-1 bg-emerald-700 text-white font-black text-[9px] px-1.5 py-0.5 rounded shadow-xs"
+                          >
                             {vDiscount}% OFF
                           </span>
                         )}
@@ -958,7 +968,10 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
                     )}
                   </div>
 
-                  <div className="mt-5 pt-3 border-t border-slate-100 flex items-center gap-2">
+                  <div 
+                    className="mt-5 pt-3 border-t border-slate-100 flex items-center gap-2 preserve-3d"
+                    style={{ transform: 'translateZ(25px)' }}
+                  >
                     <button
                       type="button"
                       onClick={() => {
@@ -980,13 +993,13 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
                       onClick={() => {
                         addToCart(product, v, 1);
                       }}
-                      className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                      className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
                       title="Add this variant to cart"
                     >
                       <ShoppingBag className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                </div>
+                </TiltCard>
               );
             })}
           </div>
@@ -1007,16 +1020,25 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
               const relMrp = rel.mrp || rel.originalPrice || (rel.price * 1.25);
               const relDiscount = relMrp > rel.price ? Math.round(((relMrp - rel.price) / relMrp) * 100) : null;
               return (
-                <div
+                <TiltCard
                   key={rel._id}
+                  maxTilt={10}
+                  perspective={1000}
+                  scale={1.025}
                   onClick={() => onSelectProduct && onSelectProduct(rel)}
-                  className="bg-white rounded-2xl border border-slate-200 p-3 hover:shadow-xl hover:border-emerald-300 transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+                  className="bg-white rounded-2xl border border-slate-200 p-3 hover:border-emerald-300 transition-all duration-300 group cursor-pointer flex flex-col justify-between preserve-3d"
                 >
-                  <div>
+                  <div className="preserve-3d" style={{ transform: 'translateZ(15px)' }}>
                     {/* Image */}
-                    <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-50 mb-3">
+                    <div 
+                      className="relative aspect-square rounded-xl overflow-hidden bg-slate-50 mb-3 preserve-3d"
+                      style={{ transform: 'translateZ(20px)' }}
+                    >
                       {relDiscount && (
-                        <div className="absolute top-2.5 left-2.5 z-10 w-9 h-9 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-[10px] font-black shadow-md">
+                        <div 
+                          style={{ transform: 'translateZ(30px)' }}
+                          className="absolute top-2.5 left-2.5 z-10 w-9 h-9 rounded-full bg-[#1b4d3e] text-white flex items-center justify-center text-[10px] font-black shadow-md"
+                        >
                           -{relDiscount}%
                         </div>
                       )}
@@ -1024,6 +1046,7 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
                       <img
                         src={rel.image || (rel.images && rel.images[0]) || '/redefine-tissue-box.webp'}
                         alt={rel.name}
+                        style={{ transform: 'translateZ(25px)' }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
@@ -1046,11 +1069,12 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
                       e.stopPropagation();
                       addToCart(rel);
                     }}
-                    className="mt-3 w-full py-2 bg-slate-100 hover:bg-[#1b4d3e] text-slate-800 hover:text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                    style={{ transform: 'translateZ(25px)' }}
+                    className="mt-3 w-full py-2 bg-slate-100 hover:bg-[#1b4d3e] text-slate-800 hover:text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer active:scale-95"
                   >
                     Add to Cart
                   </button>
-                </div>
+                </TiltCard>
               );
             })}
           </div>
