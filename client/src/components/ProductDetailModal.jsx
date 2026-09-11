@@ -215,11 +215,11 @@ export const ProductDetailModal = () => {
 
             {/* Quantity / Pack Variant Picker */}
             {selectedProduct.variants && selectedProduct.variants.length > 0 && (
-              <div>
-                <label className="text-xs font-bold text-slate-800 block mb-2">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-800 block">
                   Select Pack Size / Quantity:
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {selectedProduct.variants.map((v, idx) => {
                     const isSelected = currentVariant.size === v.size;
                     const vDiscount = v.mrp && v.mrp > v.price ? Math.round(((v.mrp - v.price) / v.mrp) * 100) : null;
@@ -228,33 +228,61 @@ export const ProductDetailModal = () => {
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => setSelectedVariant(v)}
-                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                        onClick={() => {
+                          setSelectedVariant(v);
+                          if (v.image) {
+                            setActiveMediaType('image');
+                            setActiveMediaUrl(v.image);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer flex items-start gap-2.5 ${
                           isSelected
                             ? 'border-emerald-600 bg-emerald-50/80 text-emerald-950 shadow-2xs ring-1 ring-emerald-500'
                             : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold">{v.size}</p>
-                          {vDiscount && (
-                            <span className="text-[9px] bg-emerald-700 text-white font-bold px-1 rounded">
-                              {vDiscount}% OFF
-                            </span>
-                          )}
-                        </div>
+                        {v.image && (
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-200 shadow-2xs mt-0.5">
+                            <img src={v.image} alt={v.size} className="w-full h-full object-cover" />
+                          </div>
+                        )}
 
-                        <div className="flex items-baseline gap-1.5 mt-1">
-                          {v.mrp > v.price && (
-                            <span className="text-[10px] text-slate-400 line-through">₹{v.mrp}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-xs font-bold truncate">{v.size}</p>
+                            {vDiscount && (
+                              <span className="text-[9px] bg-emerald-700 text-white font-bold px-1 rounded shrink-0">
+                                {vDiscount}% OFF
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <span className="text-xs font-black text-emerald-800">₹{v.price}</span>
+                            {v.mrp > v.price && (
+                              <span className="text-[10px] text-slate-400 line-through">₹{v.mrp}</span>
+                            )}
+                            <span className="text-[10px] text-slate-500">{v.pulls || v.unitWeight ? `• ${v.pulls || v.unitWeight}` : ''}</span>
+                          </div>
+
+                          {v.description && (
+                            <p className="text-[9px] text-slate-500 line-clamp-1 mt-0.5">
+                              {v.description}
+                            </p>
                           )}
-                          <span className="text-xs font-black text-emerald-800">₹{v.price}</span>
-                          <span className="text-[10px] text-slate-500">{v.pulls || v.unitWeight ? `• ${v.pulls || v.unitWeight}` : ''}</span>
                         </div>
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Selected variant note if available */}
+                {currentVariant.description && (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200/80 rounded-xl flex items-start gap-2 text-[11px] text-emerald-800">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>{currentVariant.description}</span>
+                  </div>
+                )}
               </div>
             )}
 

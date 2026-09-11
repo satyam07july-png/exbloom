@@ -101,7 +101,19 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
       }
     }
 
-    // 3. Secondary image
+    // 3. Variant specific images
+    if (Array.isArray(product.variants)) {
+      product.variants.forEach((v) => {
+        if (v.image && typeof v.image === 'string' && v.image.trim()) {
+          const vTrimmed = v.image.trim();
+          if (!collected.includes(vTrimmed)) {
+            collected.push(vTrimmed);
+          }
+        }
+      });
+    }
+
+    // 4. Secondary image
     if (product.secondaryImage && typeof product.secondaryImage === 'string' && product.secondaryImage.trim()) {
       const trimmed = product.secondaryImage.trim();
       if (!collected.includes(trimmed)) {
@@ -109,7 +121,17 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
       }
     }
 
-    // 4. If fewer than 2 images exist, add complementary angle views so carousel is always full & rich
+    // 5. If currently selected variant has a custom image, prioritize it at the front
+    if (selectedVariant?.image && typeof selectedVariant.image === 'string' && selectedVariant.image.trim()) {
+      const vImg = selectedVariant.image.trim();
+      const existingIdx = collected.indexOf(vImg);
+      if (existingIdx > -1) {
+        collected.splice(existingIdx, 1);
+      }
+      collected.unshift(vImg);
+    }
+
+    // 6. If fewer than 2 images exist, add complementary angle views so carousel is always full & rich
     if (collected.length < 2) {
       const angles = getCategoryAngles(product.category || '');
       angles.forEach((ang) => {
@@ -523,10 +545,16 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
 
             {/* Pack Size / Quantity Variants Selector */}
             {product.variants && product.variants.length > 0 && (
-              <div className="space-y-2.5 pt-2">
-                <label className="text-xs font-bold text-slate-800 block">
-                  Select Pack Size / Quantity:
-                </label>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 block">
+                    Select Pack Size / Variant:
+                  </label>
+                  <span className="text-[11px] text-emerald-800 font-semibold">
+                    {product.variants.length} Options Available
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {product.variants.map((v, idx) => {
                     const isSelected = currentVariant.size === v.size;
@@ -535,28 +563,69 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => setSelectedVariant(v)}
-                        className={`p-3 rounded-2xl text-left border transition-all cursor-pointer ${
+                        onClick={() => {
+                          setSelectedVariant(v);
+                          if (v.image) setActiveMediaIndex(0);
+                        }}
+                        className={`p-3 rounded-2xl text-left border transition-all cursor-pointer flex items-start gap-3 ${
                           isSelected
-                            ? 'border-emerald-600 bg-emerald-50/60 shadow-xs ring-1 ring-emerald-500'
+                            ? 'border-emerald-600 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
                             : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-slate-900">{v.size}</p>
-                          {vDiscount && (
-                            <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 py-0.2 rounded">
-                              {vDiscount}% OFF
+                        {/* Variant Thumbnail if provided */}
+                        {v.image && (
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200 shadow-2xs mt-0.5">
+                            <img src={v.image} alt={v.size} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-xs font-bold text-slate-900 truncate">{v.size}</p>
+                            {vDiscount && (
+                              <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 py-0.2 rounded shrink-0">
+                                {vDiscount}% OFF
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-baseline gap-1.5 mt-0.5">
+                            <span className="text-xs font-black text-emerald-800">₹{v.price.toFixed(2)}</span>
+                            {v.mrp > v.price && (
+                              <span className="text-[10px] text-slate-400 line-through">₹{v.mrp.toFixed(2)}</span>
+                            )}
+                            <span className="text-[10px] text-slate-500 font-normal">
+                              {v.pulls || v.unitWeight ? `• ${v.pulls || v.unitWeight}` : ''}
                             </span>
+                          </div>
+
+                          {v.description && (
+                            <p className="text-[10px] text-slate-500 line-clamp-1 mt-1 leading-snug">
+                              {v.description}
+                            </p>
                           )}
                         </div>
-                        <p className="text-xs font-bold text-emerald-800 mt-1">
-                          ₹{v.price.toFixed(2)} <span className="text-[11px] text-slate-500 font-normal">{v.pulls || v.unitWeight ? `• ${v.pulls || v.unitWeight}` : ''}</span>
-                        </p>
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Active Selected Variant Description Banner */}
+                {currentVariant.description && (
+                  <div className="p-3 bg-emerald-50/80 border border-emerald-200/90 rounded-2xl flex items-start gap-2.5 animate-fade-in shadow-2xs">
+                    <Sparkles className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                        <span>{currentVariant.size}</span>
+                        <span className="text-[10px] font-normal text-emerald-700 bg-emerald-100/70 px-1.5 py-0.2 rounded">Variant Details</span>
+                      </p>
+                      <p className="text-xs text-emerald-800 mt-0.5 leading-relaxed">
+                        {currentVariant.description}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -805,6 +874,124 @@ export const ProductDetailPage = ({ product, products = [], onBackToCatalog, onS
 
         </div>
       </div>
+
+      {/* =========================================================================
+          3.5 OUR OTHER VARIANTS SHOWCASE SECTION
+      ========================================================================= */}
+      {product.variants && product.variants.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 border-t border-slate-200">
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Layers className="w-5 h-5 text-emerald-700" />
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Our Other Variants &amp; Packs
+                </h3>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                Explore different pack quantities, special family bundles, and bulk savings for this product.
+              </p>
+            </div>
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-3.5 py-1.5 rounded-full self-start sm:self-auto shadow-2xs">
+              {product.variants.length} Pack Sizes Available
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {product.variants.map((v, idx) => {
+              const isCurrent = currentVariant.size === v.size;
+              const vDiscount = v.mrp && v.mrp > v.price ? Math.round(((v.mrp - v.price) / v.mrp) * 100) : null;
+              const variantImg = v.image || product.image || '/redefine-tissue-box.webp';
+
+              return (
+                <div
+                  key={idx}
+                  className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between ${
+                    isCurrent
+                      ? 'border-emerald-600 bg-emerald-50/40 shadow-md ring-2 ring-emerald-500/80'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+                  }`}
+                >
+                  <div className="space-y-4">
+                    <div className="flex gap-4 items-start">
+                      <div className="relative w-22 h-22 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200 shadow-2xs">
+                        <img src={variantImg} alt={v.size} className="w-full h-full object-cover" />
+                        {vDiscount && (
+                          <span className="absolute top-1 left-1 bg-emerald-700 text-white font-black text-[9px] px-1.5 py-0.5 rounded shadow-xs">
+                            {vDiscount}% OFF
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <h4 className="text-sm font-bold text-slate-900 truncate">{v.size}</h4>
+                          {isCurrent && (
+                            <span className="text-[10px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full shrink-0">
+                              Selected
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-baseline gap-2 pt-0.5">
+                          <span className="text-lg font-black text-emerald-900">₹{v.price.toFixed(2)}</span>
+                          {v.mrp > v.price && (
+                            <span className="text-xs text-slate-400 line-through">₹{v.mrp.toFixed(2)}</span>
+                          )}
+                        </div>
+
+                        {(v.pulls || v.unitWeight) && (
+                          <p className="text-[11px] font-semibold text-slate-500">
+                            {v.pulls || v.unitWeight}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Variant Description */}
+                    {v.description && (
+                      <div className="pt-3 border-t border-slate-100">
+                        <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          {v.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-slate-100 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedVariant(v);
+                        if (v.image) setActiveMediaIndex(0);
+                        window.scrollTo({ top: 100, behavior: 'smooth' });
+                      }}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+                        isCurrent
+                          ? 'bg-emerald-700 text-white shadow-xs hover:bg-emerald-800'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                      }`}
+                    >
+                      {isCurrent ? 'Currently Selected' : 'Choose This Variant'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        addToCart(product, v, 1);
+                      }}
+                      className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                      title="Add this variant to cart"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* =========================================================================
           4. RELATED PRODUCTS SECTION (MATCHING IMAGE 3)
