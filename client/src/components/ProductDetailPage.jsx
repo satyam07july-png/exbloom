@@ -15,7 +15,9 @@ import {
   ShoppingBag, 
   X, 
   ArrowUp,
-  Share2
+  Share2,
+  Sparkles,
+  Layers
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 

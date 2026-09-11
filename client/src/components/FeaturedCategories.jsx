@@ -12,134 +12,9 @@ const CATEGORY_TABS = [
 ];
 
 
-const DEFAULT_PRODUCTS = [
-  {
-    _id: 'nb-kr-1',
-    name: 'NexBloom Kitchen Rolls – Pack of 1',
-    category: 'Kitchen Roll',
-    price: 249,
-    mrp: 289,
-    image: '/nexbloom-kitchen-roll-banner.webp',
-    tagline: 'Engineered for spills, messes, and everyday kitchen needs.',
-    ply: '2-Ply Extra Absorb',
-    pullsCount: '60 Pulls / Roll',
-    variants: [{ size: 'Pack of 1', price: 249, mrp: 289 }]
-  },
-  {
-    _id: 'nb-kr-2',
-    name: 'NexBloom Kitchen Rolls – Pack of 2',
-    category: 'Kitchen Roll',
-    price: 457,
-    mrp: 578,
-    image: '/nexbloom-kitchen-roll-banner.webp',
-    tagline: 'Engineered for spills, messes, and everyday kitchen needs.',
-    ply: '2-Ply Extra Absorb',
-    pullsCount: '120 Pulls Total',
-    variants: [{ size: 'Pack of 2', price: 457, mrp: 578 }]
-  },
-  {
-    _id: 'nb-ft-100-1',
-    name: 'NexBloom Premium Face Tissues – 100 Pulls (Pack of 1)',
-    category: 'Face Tissue',
-    price: 129,
-    mrp: 189,
-    image: '/nexbloom-living-room-tissue.webp',
-    tagline: 'Luxury softness meets sustainable living.',
-    ply: '2-Ply SilkTouch',
-    pullsCount: '100 Pulls',
-    variants: [{ size: 'Pack of 1 (100 Pulls)', price: 129, mrp: 189 }]
-  },
-  {
-    _id: 'nb-ft-100-2',
-    name: 'NexBloom Premium Face Tissues – 100 Pulls (Pack of 2)',
-    category: 'Face Tissue',
-    price: 229,
-    mrp: 378,
-    image: '/nexbloom-living-room-tissue.webp',
-    tagline: 'Luxury softness meets sustainable living.',
-    ply: '2-Ply SilkTouch',
-    pullsCount: '200 Pulls Total',
-    variants: [{ size: 'Pack of 2 (200 Pulls)', price: 229, mrp: 378 }]
-  },
-  {
-    _id: 'nb-ft-100-4',
-    name: 'NexBloom Premium Face Tissues – 100 Pulls (Pack of 4)',
-    category: 'Face Tissue',
-    price: 429,
-    mrp: 756,
-    image: '/nexbloom-living-room-tissue.webp',
-    tagline: 'Luxury softness meets sustainable living.',
-    ply: '2-Ply SilkTouch',
-    pullsCount: '400 Pulls Total',
-    variants: [{ size: 'Pack of 4 (400 Pulls)', price: 429, mrp: 756 }]
-  },
-  {
-    _id: 'nb-ft-100-6',
-    name: 'NexBloom Premium Face Tissues – 100 Pulls (Pack of 6)',
-    category: 'Face Tissue',
-    price: 609,
-    mrp: 1134,
-    image: '/nexbloom-living-room-tissue.webp',
-    tagline: 'Luxury softness meets sustainable living.',
-    ply: '2-Ply SilkTouch',
-    pullsCount: '600 Pulls Total',
-    variants: [{ size: 'Pack of 6 (600 Pulls)', price: 609, mrp: 1134 }]
-  },
-  {
-    _id: 'nb-ft-200-1',
-    name: 'NexBloom Premium Face Tissues – 200 Pulls (Pack of 1)',
-    category: 'Face Tissue',
-    price: 219,
-    mrp: 279,
-    image: '/nexbloom-living-room-tissue.webp',
-    tagline: 'More comfort, more care — extra thick 2-ply facial tissues.',
-    ply: '2-Ply Luxury',
-    pullsCount: '200 Pulls',
-    variants: [{ size: 'Pack of 1 (200 Pulls)', price: 219, mrp: 279 }]
-  },
-  {
-    _id: 'nb-ft-200-2',
-    name: 'NexBloom Premium Face Tissues – 200 Pulls (Pack of 2)',
-    category: 'Face Tissue',
-    price: 417,
-    mrp: 558,
-    image: '/nexbloom-living-room-tissue.webp',
-    tagline: 'More comfort, more care — extra thick 2-ply facial tissues.',
-    ply: '2-Ply Luxury',
-    pullsCount: '400 Pulls Total',
-    variants: [{ size: 'Pack of 2 (400 Pulls)', price: 417, mrp: 558 }]
-  },
-  {
-    _id: 'nb-tr-1',
-    name: 'NexBloom Premium Toilet Rolls – Pack of 4 – One Box',
-    category: 'Toilet Roll',
-    price: 299,
-    mrp: 399,
-    image: '/toilet-roll.webp',
-    tagline: '3-ply velvety soft, quick-dissolve & flushable bathroom rolls.',
-    ply: '3-Ply Luxury',
-    pullsCount: '160 Sheets / Roll',
-    variants: [{ size: 'Pack of 4 Rolls', price: 299, mrp: 399 }]
-  },
-  {
-    _id: 'nb-tr-2',
-    name: 'NexBloom Premium Toilet Rolls – Pack of 4 – Two Box',
-    category: 'Toilet Roll',
-    price: 549,
-    mrp: 798,
-    image: '/toilet-roll.webp',
-    tagline: '3-ply velvety soft, quick-dissolve & flushable bathroom rolls.',
-    ply: '3-Ply Luxury',
-    pullsCount: '320 Sheets Total',
-    variants: [{ size: 'Pack of 8 Rolls', price: 549, mrp: 798 }]
-  },
-];
-
 export const FeaturedCategories = ({ onSelectCategory, products: propProducts = [] }) => {
   const [activeKey, setActiveKey] = useState('facial-100');
-  const [products, setProducts] = useState(
-    propProducts && propProducts.length > 0 ? propProducts : DEFAULT_PRODUCTS
-  );
+  const [products, setProducts] = useState(propProducts || []);
   const { addToCart, setSelectedProduct } = useCart();
 
   // Keep products in sync with propProducts, or fetch from API if empty
@@ -292,8 +167,22 @@ export const FeaturedCategories = ({ onSelectCategory, products: propProducts = 
           })}
         </div>
 
-        {/* ================= 3. DYNAMIC CONTENT: REAL DB PRODUCTS OR CLEAN NOTE ================= */}
-        {currentItems.length === 0 ? (
+        {/* ================= 3. DYNAMIC CONTENT: SKELETON / REAL DB PRODUCTS / CLEAN NOTE ================= */}
+        {products.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((n) => (
+              <div
+                key={n}
+                className="bg-white rounded-2xl border border-slate-100 p-4 animate-pulse space-y-3 shadow-2xs"
+              >
+                <div className="w-full aspect-square bg-slate-100 rounded-xl" />
+                <div className="h-4 bg-slate-100 rounded-md w-3/4 mx-auto" />
+                <div className="h-3 bg-slate-100 rounded-md w-1/2 mx-auto" />
+                <div className="h-8 bg-slate-100 rounded-full w-full mt-2" />
+              </div>
+            ))}
+          </div>
+        ) : currentItems.length === 0 ? (
           <div className="py-16 px-6 max-w-lg mx-auto text-center bg-slate-50/80 rounded-3xl border border-slate-200/80 shadow-xs animate-fade-in my-4">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-emerald-100/60 text-[#1b4d3e] flex items-center justify-center border border-emerald-200 shadow-xs">
               <PackageOpen className="w-8 h-8" />

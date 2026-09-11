@@ -3,130 +3,12 @@ import { ShoppingBag, Heart, Search, Shuffle, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import BASE_URL from '../utils/api';
 
-const DEFAULT_BESTSELLERS = [
-  {
-    _id: 'nb-kr-1',
-    name: 'NexBloom Kitchen Rolls - Pack of 1',
-    tagline: 'Premium Kitchen Rolls',
-    category: 'Kitchen Roll',
-    price: 249,
-    mrp: 289,
-    discountPercent: '-14%',
-    image: '/nexbloom-kitchen-roll-banner.webp',
-    description: 'Engineered for spills, messes, and everyday kitchen needs. NexBloom Kitchen Rolls combine strength, absorbency, and sustainability.',
-    ply: '2-Ply Extra Absorb',
-    pullsCount: '60 Pulls / Roll',
-    variants: [{ size: 'Pack of 1', price: 249, mrp: 289, pulls: '60 Pulls' }]
-  },
-  {
-    _id: 'nb-kr-2',
-    name: 'NexBloom Kitchen Rolls - Pack of 2',
-    tagline: 'Premium Kitchen Rolls',
-    category: 'Kitchen Roll',
-    price: 457,
-    mrp: 578,
-    discountPercent: '-21%',
-    image: '/nexbloom-kitchen-roll-banner.webp',
-    description: 'Engineered for spills, messes, and everyday kitchen needs. NexBloom Kitchen Rolls combine strength, absorbency, and sustainability.',
-    ply: '2-Ply Extra Absorb',
-    pullsCount: '120 Pulls Total',
-    variants: [{ size: 'Pack of 2', price: 457, mrp: 578, pulls: '120 Pulls' }]
-  },
-  {
-    _id: 'nb-ft-100-1',
-    name: 'NexBloom Premium Face Tissues – 100 Pulls (Pack of 1 /One)',
-    tagline: 'NexBloom Premium Face Tissues – 100 Pulls',
-    category: 'Face Tissue',
-    price: 129,
-    mrp: 189,
-    discountPercent: '-32%',
-    image: '/nexbloom-living-room-tissue.webp',
-    description: 'Luxury softness meets sustainable living. Designed for everyday comfort with uncompromised quality.',
-    ply: '2-Ply SilkTouch',
-    pullsCount: '100 Pulls',
-    variants: [{ size: 'Pack of 1 (100 Pulls)', price: 129, mrp: 189, pulls: '100 Pulls' }]
-  },
-  {
-    _id: 'nb-ft-100-2',
-    name: 'NexBloom Premium Face Tissues – 100 Pulls (Pack of 2 /Two)',
-    tagline: 'NexBloom Premium Face Tissues – 100 Pulls',
-    category: 'Face Tissue',
-    price: 229,
-    mrp: 378,
-    discountPercent: '-39%',
-    image: '/nexbloom-living-room-tissue.webp',
-    description: 'Luxury softness meets sustainable living. Designed for everyday comfort with uncompromised quality.',
-    ply: '2-Ply SilkTouch',
-    pullsCount: '200 Pulls Total',
-    variants: [{ size: 'Pack of 2 (200 Pulls)', price: 229, mrp: 378, pulls: '200 Pulls' }]
-  },
-  {
-    _id: 'nb-ft-100-4',
-    name: 'NexBloom Premium Face Tissues – 100 Pulls (Pack of 4/four)',
-    tagline: 'NexBloom Premium Face Tissues – 100 Pulls',
-    category: 'Face Tissue',
-    price: 429,
-    mrp: 756,
-    discountPercent: '-43%',
-    image: '/nexbloom-living-room-tissue.webp',
-    description: 'Luxury softness meets sustainable living. Designed for everyday comfort with uncompromised quality.',
-    ply: '2-Ply SilkTouch',
-    pullsCount: '400 Pulls Total',
-    variants: [{ size: 'Pack of 4 (400 Pulls)', price: 429, mrp: 756, pulls: '400 Pulls' }]
-  },
-  {
-    _id: 'nb-ft-100-6',
-    name: 'NexBloom Premium Face Tissues – 100 Pulls (Pack of 6/Six)',
-    tagline: 'NexBloom Premium Face Tissues – 100 Pulls',
-    category: 'Face Tissue',
-    price: 609,
-    mrp: 1134,
-    discountPercent: '-46%',
-    image: '/nexbloom-living-room-tissue.webp',
-    description: 'Luxury softness meets sustainable living. Designed for everyday comfort with uncompromised quality.',
-    ply: '2-Ply SilkTouch',
-    pullsCount: '600 Pulls Total',
-    variants: [{ size: 'Pack of 6 (600 Pulls)', price: 609, mrp: 1134, pulls: '600 Pulls' }]
-  },
-  {
-    _id: 'nb-ft-200-1',
-    name: 'NexBloom Premium Face Tissues – 200 Pulls (Pack of 1)',
-    tagline: 'NexBloom Premium Face Tissues – 200 Pulls',
-    category: 'Face Tissue',
-    price: 219,
-    mrp: 279,
-    discountPercent: '-22%',
-    image: '/nexbloom-living-room-tissue.webp',
-    description: 'More comfort, more care — extra thick 2-ply facial tissues for home, office, and car.',
-    ply: '2-Ply Luxury',
-    pullsCount: '200 Pulls',
-    variants: [{ size: 'Pack of 1 (200 Pulls)', price: 219, mrp: 279, pulls: '200 Pulls' }]
-  },
-  {
-    _id: 'nb-ft-200-2',
-    name: 'NexBloom Premium Face Tissues – 200 Pulls (Pack of 2)',
-    tagline: 'NexBloom Premium Face Tissues – 200 Pulls',
-    category: 'Face Tissue',
-    price: 417,
-    mrp: 558,
-    discountPercent: '-25%',
-    image: '/nexbloom-living-room-tissue.webp',
-    description: 'More comfort, more care — extra thick 2-ply facial tissues for home, office, and car.',
-    ply: '2-Ply Luxury',
-    pullsCount: '400 Pulls Total',
-    variants: [{ size: 'Pack of 2 (400 Pulls)', price: 417, mrp: 558, pulls: '400 Pulls' }]
-  },
-];
-
 export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) => {
   const { addToCart, setSelectedProduct, showToast } = useCart();
   const [wishlist, setWishlist] = useState({});
   const [hoveredCardId, setHoveredCardId] = useState(null);
   const [activeCardId, setActiveCardId] = useState(null);
-  const [products, setProducts] = useState(
-    propProducts && propProducts.length > 0 ? propProducts : DEFAULT_BESTSELLERS
-  );
-  const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState(propProducts || []);
 
   // Sync when parent products change
   useEffect(() => {
@@ -135,7 +17,7 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
     }
   }, [propProducts]);
 
-  // Fetch products from backend if needed
+  // Fetch products from backend if needed and not supplied
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -145,9 +27,7 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
         if (Array.isArray(data) && data.length > 0) {
           setProducts(data);
         }
-      } catch (err) {
-        // Keep fallback data
-      }
+      } catch (err) {}
     };
     if (!propProducts || propProducts.length === 0) {
       fetchProducts();
@@ -201,8 +81,24 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
         </div>
 
         {/* 4-Column Product Grid (1 row me 4 products, total 8 products) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
-          {products.slice(0, 8).map((product) => {
+        {products.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              <div
+                key={n}
+                className="bg-white rounded-2xl p-4 border border-slate-100 shadow-2xs animate-pulse flex flex-col items-center space-y-3"
+              >
+                <div className="w-full aspect-square bg-slate-100 rounded-xl" />
+                <div className="h-3 bg-slate-100 rounded-md w-1/2 mt-2" />
+                <div className="h-4 bg-slate-100 rounded-md w-3/4" />
+                <div className="h-4 bg-slate-100 rounded-md w-1/3" />
+                <div className="h-9 bg-slate-100 rounded-full w-full mt-4" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
+            {products.slice(0, 8).map((product) => {
             const firstVariant = product.variants?.[0];
             const displayPrice = firstVariant?.price ?? product.price ?? 0;
             const originalPrice = product.mrp || product.originalPrice || firstVariant?.mrp || (displayPrice > 0 ? Math.round(displayPrice * 1.25) : 0);
@@ -333,6 +229,7 @@ export const FeaturedProducts = ({ onExploreAll, products: propProducts = [] }) 
             );
           })}
         </div>
+      )}
 
         {/* Explore All Button */}
         {onExploreAll && (

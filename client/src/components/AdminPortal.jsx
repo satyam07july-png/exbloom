@@ -98,6 +98,7 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
   const [uploadProgressText, setUploadProgressText] = useState('');
   const [mediaUrlInput, setMediaUrlInput] = useState('');
   const [mediaTypeInput, setMediaTypeInput] = useState('image'); // 'image' or 'video'
+  const [uploadingVariantIndex, setUploadingVariantIndex] = useState(null);
   const imageInputRef = useRef(null);
   const videoInputRef = useRef(null);
 
@@ -118,8 +119,8 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
     stock: 50,
     specs: ['100% Virgin Wood Pulp', 'Ultra Soft & Absorbent', 'Food Contact Safe Certified', 'Lint-Free & Hypoallergenic'],
     variants: [
-      { size: 'Pack of 2 (200 Sheets)', mrp: 249, price: 129, pulls: '100 Pulls / Box', stock: 30, unitWeight: '100 Sheets / Pack' },
-      { size: 'Pack of 4 (400 Sheets)', mrp: 499, price: 239, pulls: '100 Pulls / Box', stock: 20, unitWeight: '100 Sheets / Pack' },
+      { size: 'Pack of 2 (200 Sheets)', mrp: 249, price: 129, pulls: '100 Pulls / Box', stock: 30, unitWeight: '100 Sheets / Pack', image: '', description: '' },
+      { size: 'Pack of 4 (400 Sheets)', mrp: 499, price: 239, pulls: '100 Pulls / Box', stock: 20, unitWeight: '100 Sheets / Pack', image: '', description: '' },
     ],
   };
 
@@ -739,37 +740,85 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
       material: product.material || '100% Virgin Pulp',
       stock: product.stock !== undefined ? product.stock : 50,
       specs: product.specs || ['100% Virgin Pulp', 'Ultra Soft'],
-      variants: product.variants && product.variants.length > 0 ? product.variants : [
-        { size: 'Pack of 2', mrp: product.mrp || 0, price: product.price, stock: 20, pulls: product.pullsCount || '' },
-        { size: 'Pack of 4', mrp: product.mrp ? Math.round(product.mrp * 1.9) : 0, price: Math.round(product.price * 1.9), stock: 20, pulls: product.pullsCount || '' },
-      ],
+      variants: product.variants && product.variants.length > 0 
+        ? product.variants.map((v) => ({
+            size: v.size || '',
+            mrp: v.mrp || 0,
+            price: v.price || 0,
+            stock: v.stock !== undefined ? v.stock : 20,
+            pulls: v.pulls || v.unitWeight || '',
+            image: v.image || '',
+            description: v.description || '',
+          }))
+        : [
+            { size: 'Pack of 2', mrp: product.mrp || 0, price: product.price, stock: 20, pulls: product.pullsCount || '', image: '', description: '' },
+            { size: 'Pack of 4', mrp: product.mrp ? Math.round(product.mrp * 1.9) : 0, price: Math.round(product.price * 1.9), stock: 20, pulls: product.pullsCount || '', image: '', description: '' },
+          ],
     });
     setIsAddModalOpen(true);
   };
 
-  // Variant change helper
+  // Variant change helper (safely handles numbers, URLs, and descriptions)
   const updateVariant = (index, field, value) => {
     const updated = [...productForm.variants];
-    updated[index][field] = field === 'price' || field === 'mrp' || field === 'stock' ? Number(value) : value;
+    if (field === 'price' || field === 'mrp' || field === 'stock') {
+      updated[index][field] = value === '' ? '' : Number(value);
+    } else {
+      updated[index][field] = value;
+    }
     setProductForm({ ...productForm, variants: updated });
   };
 
-  // Add Variant Row
+  // Add Variant Row with image and description
   const addVariantRow = () => {
     setProductForm({
       ...productForm,
       variants: [
         ...productForm.variants,
         { 
-          size: `Pack of ${(productForm.variants.length + 1) * 2} (${(productForm.variants.length + 1) * 200} Pulls)`, 
-          mrp: Math.round(productForm.mrp * (productForm.variants.length + 1) * 0.9) || 0,
-          price: Math.round(productForm.price * (productForm.variants.length + 1) * 0.9), 
+          size: `Pack of ${(productForm.variants.length + 1) * 2} (${(productForm.variants.length + 1) * 200} Sheets)`, 
+          mrp: Math.round((Number(productForm.mrp) || 0) * (productForm.variants.length + 1) * 0.9) || 0,
+          price: Math.round((Number(productForm.price) || 0) * (productForm.variants.length + 1) * 0.9) || 0, 
           pulls: productForm.pullsCount || '',
           stock: 20, 
-          unitWeight: '100 Pulls / Box' 
+          unitWeight: '100 Sheets / Pack',
+          image: '',
+          description: '',
         },
       ],
     });
+  };
+
+  // Upload image directly for a specific variant pack
+  const handleVariantImageUpload = async (e, variantIdx) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingVariantIndex(variantIdx);
+    setUploadProgressText(`Uploading variant image: ${file.name}...`);
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/upload/image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        updateVariant(variantIdx, 'image', data.url);
+      } else {
+        alert('Upload failed: ' + (data.error || 'Server error'));
+      }
+    } catch (err) {
+      alert('Error uploading variant image: ' + err.message);
+    } finally {
+      setUploadingVariantIndex(null);
+      setUploadProgressText('');
+      e.target.value = '';
+    }
   };
 
   // Remove Variant Row
@@ -1313,12 +1362,15 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
 
                         {/* Variants Preview */}
                         {product.variants && product.variants.length > 0 && (
-                          <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-500 space-y-1">
+                          <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-500 space-y-1.5">
                             <p className="font-bold text-slate-700">Pack Variants ({product.variants.length}):</p>
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1.5">
                               {product.variants.map((v, i) => (
-                                <span key={i} className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                                  {v.size}: ₹{v.price}
+                                <span key={i} className="inline-flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 text-slate-700 font-medium text-[10px]">
+                                  {v.image && (
+                                    <img src={v.image} alt={v.size} className="w-3.5 h-3.5 rounded-xs object-cover" />
+                                  )}
+                                  <span>{v.size}: ₹{v.price}</span>
                                 </span>
                               ))}
                             </div>
@@ -2137,21 +2189,22 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
                   </button>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {productForm.variants.map((v, idx) => {
                     const varDiscount = calculateDiscount(v.mrp, v.price);
                     return (
-                      <div key={idx} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
-                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                      <div key={idx} className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-3 shadow-2xs hover:border-slate-300 transition-colors">
+                        {/* Row 1: Pack Name, MRP, Selling Price, Stock, Delete */}
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
                           <div className="sm:col-span-2">
-                            <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Pack Name *</label>
+                            <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Pack Name / Size *</label>
                             <input
                               type="text"
                               required
                               placeholder="e.g. Pack of 4 (400 Sheets)"
                               value={v.size}
                               onChange={(e) => updateVariant(idx, 'size', e.target.value)}
-                              className="w-full bg-slate-50 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 font-bold"
+                              className="w-full bg-slate-50 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 font-bold focus:bg-white focus:outline-none focus:border-emerald-600"
                             />
                           </div>
 
@@ -2162,19 +2215,19 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
                               placeholder="MRP"
                               value={v.mrp || ''}
                               onChange={(e) => updateVariant(idx, 'mrp', e.target.value)}
-                              className="w-full bg-slate-50 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200"
+                              className="w-full bg-slate-50 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 focus:bg-white focus:outline-none focus:border-emerald-600"
                             />
                           </div>
 
                           <div>
-                            <label className="text-[10px] font-bold text-emerald-700 block mb-0.5">Price (₹) *</label>
+                            <label className="text-[10px] font-bold text-emerald-700 block mb-0.5">Selling Price (₹) *</label>
                             <input
                               type="number"
                               required
                               placeholder="Selling Price"
                               value={v.price}
                               onChange={(e) => updateVariant(idx, 'price', e.target.value)}
-                              className="w-full bg-emerald-50 text-xs px-2.5 py-1.5 rounded-lg border border-emerald-300 font-black text-emerald-900"
+                              className="w-full bg-emerald-50 text-xs px-2.5 py-1.5 rounded-lg border border-emerald-300 font-black text-emerald-900 focus:bg-white focus:outline-none focus:border-emerald-600"
                             />
                           </div>
 
@@ -2186,14 +2239,14 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
                                 placeholder="Stock"
                                 value={v.stock}
                                 onChange={(e) => updateVariant(idx, 'stock', e.target.value)}
-                                className="w-full bg-slate-50 text-xs px-2 py-1.5 rounded-lg border border-slate-200"
+                                className="w-full bg-slate-50 text-xs px-2 py-1.5 rounded-lg border border-slate-200 focus:bg-white focus:outline-none focus:border-emerald-600"
                               />
                             </div>
 
                             <button
                               type="button"
                               onClick={() => removeVariantRow(idx)}
-                              className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 cursor-pointer"
+                              className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 cursor-pointer transition-colors"
                               title="Delete this variant"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -2201,23 +2254,106 @@ export const AdminPortal = ({ onBackToStore, products, setProducts }) => {
                           </div>
                         </div>
 
-                        {/* Variant details & discount badge */}
-                        <div className="flex items-center justify-between text-[10px]">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              placeholder="Pulls count / Unit details (e.g. 100 Pulls / Box)"
-                              value={v.pulls || v.unitWeight || ''}
-                              onChange={(e) => updateVariant(idx, 'pulls', e.target.value)}
-                              className="bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-slate-600 text-[10px] w-48"
-                            />
+                        {/* Row 2: Variant Specific Image (Upload or URL) */}
+                        <div className="p-2.5 bg-slate-50/80 rounded-lg border border-dashed border-slate-200 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-bold text-slate-700 flex items-center gap-1.5">
+                              <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Variant Pack Image</span>
+                            </label>
+                            {v.image ? (
+                              <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                                <Check className="w-3 h-3" /> Image linked
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">Optional: defaults to main product image</span>
+                            )}
                           </div>
 
-                          {varDiscount && (
-                            <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                              {varDiscount.percent}% OFF (Save ₹{varDiscount.saving})
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2.5">
+                            {/* Image Preview Thumbnail */}
+                            {v.image ? (
+                              <div className="relative w-11 h-11 rounded-lg border border-slate-200 overflow-hidden shrink-0 bg-white group shadow-2xs">
+                                <img src={v.image} alt={v.size} className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => updateVariant(idx, 'image', '')}
+                                  className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                  title="Remove image"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="w-11 h-11 rounded-lg border border-dashed border-slate-300 flex items-center justify-center shrink-0 bg-white text-slate-400">
+                                <ImageIcon className="w-4 h-4" />
+                              </div>
+                            )}
+
+                            {/* URL input */}
+                            <div className="flex-1">
+                              <input
+                                type="url"
+                                placeholder="Paste image URL (or upload from device)"
+                                value={v.image || ''}
+                                onChange={(e) => updateVariant(idx, 'image', e.target.value)}
+                                className="w-full bg-white text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-emerald-600 font-mono text-[11px]"
+                              />
+                            </div>
+
+                            {/* Local File Upload Button */}
+                            <label className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shrink-0 ${
+                              uploadingVariantIndex === idx
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                            }`}>
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>{uploadingVariantIndex === idx ? 'Uploading...' : 'Upload'}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleVariantImageUpload(e, idx)}
+                                disabled={uploadingVariantIndex === idx}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Row 3: Variant Description & Unit Pulls Details */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
+                              <FileText className="w-3 h-3 text-emerald-600" />
+                              <span>Variant Description &amp; Pack Details</span>
+                            </label>
+                            {varDiscount && (
+                              <span className="font-bold text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                                {varDiscount.percent}% OFF (Save ₹{varDiscount.saving})
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div className="sm:col-span-2">
+                              <input
+                                type="text"
+                                placeholder="Variant Description (e.g. Economy bundle of 4 rolls, extra soft 3-ply virgin pulp)"
+                                value={v.description || ''}
+                                onChange={(e) => updateVariant(idx, 'description', e.target.value)}
+                                className="w-full bg-slate-50 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 focus:bg-white focus:outline-none focus:border-emerald-600"
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="Pulls / Sheets (e.g. 100 Pulls / Box)"
+                                value={v.pulls || v.unitWeight || ''}
+                                onChange={(e) => updateVariant(idx, 'pulls', e.target.value)}
+                                className="w-full bg-slate-50 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 focus:bg-white focus:outline-none focus:border-emerald-600"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );

@@ -211,9 +211,11 @@ router.post("/products", protectAdmin, async (req, res) => {
         stock: v.stock !== undefined ? Number(v.stock) : 20,
         unitWeight: v.unitWeight || "",
         pulls: v.pulls || "",
+        image: v.image ? v.image.trim() : "",
+        description: v.description ? v.description.trim() : "",
       })) : [
-        { size: "Pack of 2", price: Number(price), mrp: mrp ? Number(mrp) : 0, stock: Number(stock) || 50, pulls: pullsCount || "" },
-        { size: "Pack of 4", price: Math.round(Number(price) * 1.9), mrp: mrp ? Math.round(Number(mrp) * 1.9) : 0, stock: 30, pulls: pullsCount || "" },
+        { size: "Pack of 2", price: Number(price), mrp: mrp ? Number(mrp) : 0, stock: Number(stock) || 50, pulls: pullsCount || "", image: "", description: "" },
+        { size: "Pack of 4", price: Math.round(Number(price) * 1.9), mrp: mrp ? Math.round(Number(mrp) * 1.9) : 0, stock: 30, pulls: pullsCount || "", image: "", description: "" },
       ],
     });
 
@@ -236,6 +238,20 @@ router.put("/products/:id", protectAdmin, async (req, res) => {
     if (updateData.price !== undefined) updateData.price = Number(updateData.price);
     if (updateData.mrp !== undefined) updateData.mrp = Number(updateData.mrp);
     if (updateData.stock !== undefined) updateData.stock = Number(updateData.stock);
+
+    // Process variants array if provided
+    if (Array.isArray(updateData.variants)) {
+      updateData.variants = updateData.variants.map(v => ({
+        size: v.size || "Standard Pack",
+        price: Number(v.price) || 0,
+        mrp: v.mrp ? Number(v.mrp) : 0,
+        stock: v.stock !== undefined ? Number(v.stock) : 20,
+        unitWeight: v.unitWeight || "",
+        pulls: v.pulls || "",
+        image: v.image ? v.image.trim() : "",
+        description: v.description ? v.description.trim() : "",
+      }));
+    }
 
     // Process images array for update
     let imageList = [];

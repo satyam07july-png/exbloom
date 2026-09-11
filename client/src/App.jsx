@@ -40,7 +40,16 @@ function MainContent() {
     return 'home';
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => {
+    try {
+      const cached = localStorage.getItem('nexbloom_cached_products');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [authModalConfig, setAuthModalConfig] = useState({
     isOpen: false,
@@ -117,14 +126,24 @@ function MainContent() {
         return res.json();
       })
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setProducts(data);
+          try {
+            localStorage.setItem('nexbloom_cached_products', JSON.stringify(data));
+          } catch (e) {}
         }
       })
-      .catch(() => {
-        // Fallback data
-      });
+      .catch(() => {});
   }, []);
+
+  // Keep cache synced on any product state update (admin add/edit/delete)
+  useEffect(() => {
+    if (Array.isArray(products) && products.length > 0) {
+      try {
+        localStorage.setItem('nexbloom_cached_products', JSON.stringify(products));
+      } catch (e) {}
+    }
+  }, [products]);
 
   const handleSelectCategory = (cat) => {
     setSelectedProduct(null);
@@ -255,6 +274,7 @@ function MainContent() {
               <div>
                 <Hero
                   onExploreClick={handleExploreAll}
+                  onSelectCategory={handleSelectCategory}
                 />
                 <TrustBadges />
                 <FeaturedProducts

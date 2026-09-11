@@ -7,6 +7,8 @@ const variantSchema = new mongoose.Schema({
   stock: { type: Number, default: 20 },
   unitWeight: { type: String, default: "" }, // e.g. "100 Sheets / Pack"
   pulls: { type: String, default: "" }, // e.g. "100 Pulls"
+  image: { type: String, default: "" }, // Specific Variant Pack Image
+  description: { type: String, default: "" }, // Specific Variant Description / Note
 });
 
 const productSchema = new mongoose.Schema(
